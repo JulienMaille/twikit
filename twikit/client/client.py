@@ -397,6 +397,19 @@ class Client:
         if flow.task_id == 'DenyLoginSubtask':
             raise TwitterException(flow.response['subtasks'][0]['cta']['secondary_text']['text'])
 
+        if flow.task_id == 'LoginAcid':
+            print(find_dict(flow.response, 'secondary_text', find_one=True)[0]['text'])
+
+            await flow.execute_task({
+                'subtask_id': 'LoginAcid',
+                'enter_text': {
+                    'text': input('>>> '),
+                    'link': 'next_link'
+                }
+            })
+            
+            return flow.response
+
         await flow.execute_task({
             'subtask_id': 'AccountDuplicationCheck',
             'check_logged_in_account': {
@@ -420,17 +433,6 @@ class Client:
                 'subtask_id': 'LoginTwoFactorAuthChallenge',
                 'enter_text': {
                     'text': totp_code,
-                    'link': 'next_link'
-                }
-            })
-
-        if flow.task_id == 'LoginAcid':
-            print(find_dict(flow.response, 'secondary_text', find_one=True)[0]['text'])
-
-            await flow.execute_task({
-                'subtask_id': 'LoginAcid',
-                'enter_text': {
-                    'text': input('>>> '),
                     'link': 'next_link'
                 }
             })
