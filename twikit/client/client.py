@@ -17,7 +17,7 @@ from httpx._utils import URLPattern
 from .._captcha import Capsolver
 from ..bookmark import BookmarkFolder
 from ..community import Community, CommunityMember
-from ..constants import TOKEN
+from ..constants import TOKEN, DOMAIN
 from ..errors import (
     AccountLocked,
     AccountSuspended,
@@ -175,7 +175,7 @@ class Client:
                 if self.captcha_solver is None:
                     raise AccountLocked(
                         'Your account is locked. Visit '
-                        'https://twitter.com/account/access to unlock it.'
+                        f'https://{DOMAIN}/account/access to unlock it.'
                     )
                 if auto_unlock:
                     await self.unlock()
@@ -269,7 +269,7 @@ class Client:
             'content-type': 'application/json',
             'X-Twitter-Auth-Type': 'OAuth2Session',
             'X-Twitter-Active-User': 'yes',
-            'Referer': 'https://twitter.com/',
+            'Referer': f'https://{DOMAIN}/',
             'User-Agent': self._user_agent,
         }
 
@@ -290,8 +290,8 @@ class Client:
         return guest_token
 
     async def _ui_metrix(self) -> str:
-        js, _ = await self.get('https://twitter.com/i/js_inst?c_name=ui_metrics')
         return re.findall(r'return ({.*?});', js, re.DOTALL)[0]
+        js, _ = await self.get(f'https://twitter.com/i/js_inst?c_name=ui_metrics') # keep twitter.com here
 
     async def login(
         self,
@@ -4164,7 +4164,7 @@ class Client:
         )
 
     async def _stream(self, topics: set[str]) -> AsyncGenerator[tuple[str, Payload]]:
-        url = 'https://api.twitter.com/live_pipeline/events'
+        url = f'https://api.{DOMAIN}/live_pipeline/events'
         params = {'topics': ','.join(topics)}
         headers = self._base_headers
         headers.pop('content-type')
