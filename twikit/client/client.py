@@ -54,6 +54,8 @@ from ..utils import (
     find_entry_by_type,
     httpx_transport_to_url
 )
+from ..x_client_transaction.utils import handle_x_migration
+from ..x_client_transaction import ClientTransaction
 from .gql import GQLClient
 from .v11 import V11Client
 
@@ -106,6 +108,7 @@ class Client:
         self.captcha_solver = captcha_solver
         if captcha_solver is not None:
             captcha_solver.client = self
+        self.client_transaction = ClientTransaction()
 
         self._token = TOKEN
         self._user_id = None
@@ -154,8 +157,22 @@ class Client:
         if not await self.rate_limit_check(url):
             raise TooManyRequests("Rate limit exceeded, retry after " + str(self.rate_limits[url]["reset"] - time.time()) + " seconds")
 
+        headers = kwargs.pop("headers", {})
+        if not self.client_transaction.home_page_response:
+            cookies_backup = self.get_cookies().copy()
+            ct_headers = {
+                "Accept-Language": f"{self.language},{self.language.split('-')[0]};q=0.9",
+                "Cache-Control": "no-cache",
+                "Referer": f"https://{DOMAIN}",
+                "User-Agent": self._user_agent
+            }
+            await self.client_transaction.init(self.http, ct_headers)
+            self.set_cookies(cookies_backup, clear_cookies=True)
+            tid = self.client_transaction.generate_transaction_id(method=method, path=urlparse(url).path)
+            headers["X-Client-Transaction-Id"] = tid
+
         cookies_backup = self.get_cookies().copy()
-        response = await self.http.request(method, url, **kwargs)
+        response = await self.http.request(method, url, headers=headers, **kwargs)
         self._remove_duplicate_ct0_cookie()
 
         try:
