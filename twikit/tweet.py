@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+import unicodedata
 from datetime import datetime
 from typing import TYPE_CHECKING
 
@@ -102,11 +103,11 @@ class Tweet:
         self.id: str = data['rest_id']
         legacy = data['legacy']
         self.created_at: str = legacy['created_at']
-        self.text: str = legacy['full_text']
+        self.raw_text: str = legacy['full_text']
+
         self.lang: str = legacy['lang']
         self.is_quote_status: bool = legacy['is_quote_status']
         self.in_reply_to: str | None = self._data['legacy'].get('in_reply_to_status_id_str')
-        self.is_quote_status: bool = legacy['is_quote_status']
         self.possibly_sensitive: bool = legacy.get('possibly_sensitive')
         self.possibly_sensitive_editable: bool = legacy.get('possibly_sensitive_editable')
         self.quote_count: int = legacy['quote_count']
@@ -115,6 +116,7 @@ class Tweet:
         self.favorite_count: int = legacy['favorite_count']
         self.favorited: bool = legacy['favorited']
         self.retweet_count: int = legacy['retweet_count']
+        self.retweeted: bool = legacy['retweeted']
         self._place_data = legacy.get('place')
         self.editable_until_msecs: int = data['edit_control'].get('editable_until_msecs')
         self.is_translatable: bool = data.get('is_translatable')
@@ -123,6 +125,10 @@ class Tweet:
         self.view_count: str = data['views'].get('count') if 'views' in data else None
         self.view_count_state: str = data['views'].get('state') if 'views' in data else None
         self.has_community_notes: bool = data.get('has_birdwatch_notes')
+
+        self.text = unicodedata.normalize('NFKC', self.raw_text)  # NFKD will change accents
+        self.text = ' '.join(self.text.splitlines())  # Remove line breaks
+        self.text = ' '.join(self.text.split())  # Remove repeated spaces
 
         if data.get('quoted_status_result'):
             quoted_tweet = data.pop('quoted_status_result')['result']
@@ -164,6 +170,9 @@ class Tweet:
         self.hashtags: list[str] = [
             i['text'] for i in hashtags
         ]
+
+        self.mentions = legacy['entities'].get('user_mentions')
+        self.mentions = list({o['id_str']: o for o in self.mentions}.values())
 
         self.community_note = None
         if 'birdwatch_pivot' in data:

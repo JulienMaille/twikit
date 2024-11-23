@@ -28,16 +28,19 @@ class Message:
         client: Client,
         data: dict,
         sender_id: str,
-        recipient_id: str
+        recipient_id: str,
+        from_user: User | None
     ) -> None:
         self._client = client
         self.sender_id = sender_id
         self.recipient_id = recipient_id
+        self.from_user = from_user
 
         self.id: str = data['id']
         self.time: str = data['time']
         self.text: str = data['text']
         self.attachment: dict | None = data.get('attachment')
+        self.converstion_id: str | None = data.get('conversation_id')
 
     async def reply(self, text: str, media_id: str | None = None) -> Message:
         """Replies to the message.

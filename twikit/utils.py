@@ -163,7 +163,10 @@ def get_query_id(url: str) -> str:
 
 
 def timestamp_to_datetime(timestamp: str) -> datetime:
-    return datetime.strptime(timestamp, '%a %b %d %H:%M:%S %z %Y')
+    ts = timestamp.split(' ')
+    ts = ' '.join(ts[:4]) + ' ' + ts[5]
+    return datetime.strptime(ts, "%a %b %d %H:%M:%S %Y")
+    #return datetime.strptime(timestamp, '%a %b %d %H:%M:%S %z %Y')
 
 
 def build_tweet_data(raw_data: dict) -> dict:
