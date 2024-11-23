@@ -8,11 +8,13 @@ import warnings
 from functools import partial
 from typing import Any, AsyncGenerator, Literal
 import time
+import random
 
 import filetype
 import pyotp
 from httpx import AsyncClient, AsyncHTTPTransport, Response
 from httpx._utils import URLPattern
+from urllib.parse import urlparse
 
 from .._captcha import Capsolver
 from ..bookmark import BookmarkFolder
@@ -54,8 +56,9 @@ from ..utils import (
     find_entry_by_type,
     httpx_transport_to_url
 )
-from ..x_client_transaction.utils import handle_x_migration
 from ..x_client_transaction import ClientTransaction
+from ..tools.ui_metrics import solve_ui_metrics
+from ..tools.email_client import EmailClient
 from .gql import GQLClient
 from .v11 import V11Client
 
@@ -93,6 +96,8 @@ class Client:
         proxy: str | None = None,
         captcha_solver: Capsolver | None = None,
         user_agent: str | None = None,
+        email: str | None = None,
+        email_password: str | None = None,
         **kwargs
     ) -> None:
         if 'proxies' in kwargs:
@@ -109,6 +114,10 @@ class Client:
         if captcha_solver is not None:
             captcha_solver.client = self
         self.client_transaction = ClientTransaction()
+        if email and email_password:
+            self.email_client = EmailClient(email, email_password, 30)
+        else:
+            self.email_client = None
 
         self._token = TOKEN
         self._user_id = None
@@ -307,8 +316,8 @@ class Client:
         return guest_token
 
     async def _ui_metrix(self) -> str:
-        return re.findall(r'return ({.*?});', js, re.DOTALL)[0]
         js, _ = await self.get(f'https://twitter.com/i/js_inst?c_name=ui_metrics') # keep twitter.com here
+        return solve_ui_metrics(js)
 
     async def login(
         self,
@@ -359,7 +368,7 @@ class Client:
                 'flow_context': {
                     'debug_overrides': {},
                     'start_location': {
-                        'location': 'splash_screen'
+                        'location': random.choice(['splash_screen', 'manual_link'])
                     }
                 }
             },
@@ -407,15 +416,15 @@ class Client:
                 'web_modal': 1
             }
         })
-        await flow.sso_init('apple')
+        solution = await self._ui_metrix()
         await flow.execute_task({
             "subtask_id": "LoginJsInstrumentationSubtask",
             "js_instrumentation": {
-                "response": "{\"rf\":{\"a4fc506d24bb4843c48a1966940c2796bf4fb7617a2d515ad3297b7df6b459b6\":121,\"bff66e16f1d7ea28c04653dc32479cf416a9c8b67c80cb8ad533b2a44fee82a3\":-1,\"ac4008077a7e6ca03210159dbe2134dea72a616f03832178314bb9931645e4f7\":-22,\"c3a8a81a9b2706c6fec42c771da65a9597c537b8e4d9b39e8e58de9fe31ff239\":-12},\"s\":\"ZHYaDA9iXRxOl2J3AZ9cc23iJx-Fg5E82KIBA_fgeZFugZGYzRtf8Bl3EUeeYgsK30gLFD2jTQx9fAMsnYCw0j8ahEy4Pb5siM5zD6n7YgOeWmFFaXoTwaGY4H0o-jQnZi5yWZRAnFi4lVuCVouNz_xd2BO2sobCO7QuyOsOxQn2CWx7bjD8vPAzT5BS1mICqUWyjZDjLnRZJU6cSQG5YFIHEPBa8Kj-v1JFgkdAfAMIdVvP7C80HWoOqYivQR7IBuOAI4xCeLQEdxlGeT-JYStlP9dcU5St7jI6ExyMeQnRicOcxXLXsan8i5Joautk2M8dAJFByzBaG4wtrPhQ3QAAAZEi-_t7\"}",
-                #"response": await self._ui_metrix(),
+                "response": solution,
                 "link": "next_link"
             }
         })
+        await flow.sso_init('apple')
         await flow.execute_task({
             'subtask_id': 'LoginEnterUserIdentifierSSO',
             'settings_list': {
@@ -433,7 +442,7 @@ class Client:
 
         if flow.task_id == 'LoginEnterAlternateIdentifierSubtask':
             await flow.execute_task({
-                'subtask_id': 'LoginEnterAlternateIdentifierSubtask',
+                'subtask_id': flow.task_id,
                 'enter_text': {
                     'text': auth_info_2,
                     'link': 'next_link'
@@ -452,12 +461,18 @@ class Client:
             raise TwitterException(flow.response['subtasks'][0]['cta']['secondary_text']['text'])
 
         if flow.task_id == 'LoginAcid':
+            if self.email_client:
+                print("Waiting for the email auth challange")
+                now_time = datetime.now(timezone.utc) - timedelta(seconds=30)
+                code = await self.email_client.get_email_code(now_time)
+            else:
             print(find_dict(flow.response, 'secondary_text', find_one=True)[0]['text'])
+                code = input('>>> ')
 
             await flow.execute_task({
                 'subtask_id': 'LoginAcid',
                 'enter_text': {
-                    'text': input('>>> '),
+                    'text': code,
                     'link': 'next_link'
                 }
             })
