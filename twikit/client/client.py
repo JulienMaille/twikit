@@ -202,6 +202,8 @@ class Client:
                     raise AccountLocked(
                         'Your account is locked. Visit '
                         f'https://{DOMAIN}/account/access to unlock it.'
+                        f'auth_token={self.http.cookies.get('auth_token')} '
+                        f'ct0={self.http.cookies.get('ct0')}'
                     )
                 if auto_unlock:
                     await self.unlock()
@@ -216,7 +218,7 @@ class Client:
         status_code = response.status_code
 
         if status_code >= 400 and raise_exception:
-            message = f'status: {status_code}, message: "{response.text}"'
+            message = f'status: {status_code}, url: {url}, message: "{response.text}"'
             if status_code == 400:
                 raise BadRequest(message, headers=response.headers)
             elif status_code == 401:
