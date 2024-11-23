@@ -2907,6 +2907,16 @@ class Client:
         response, _ = await self.v11.dm_conversation(conversation_id, max_id)
         return response
 
+    async def _get_dm_inbox(
+        self,
+        max_id: str | None = None
+    ) -> dict:
+        """
+        Base function to get dm inbox.
+        """
+        response, _ = await self.v11.dm_inbox(max_id)
+        return response
+
     async def send_dm(
         self,
         user_id: str,
@@ -3112,6 +3122,64 @@ class Client:
         return Result(
             messages,
             partial(self.get_dm_history, user_id, messages[-1].id),
+            messages[-1].id
+        )
+
+    async def get_dm_inbox(
+        self,
+        max_id: str | None = None
+    ) -> Result[Message]:
+        """
+        Retrieves the DM inbox.
+
+        Returns
+        -------
+        Result[:class:`Message`]
+            A Result object containing a list of Message objects representing
+            the DM inbox.
+
+        Examples
+        --------
+        >>> messages = await client.get_dm_inbox()
+        >>> for message in messages:
+        >>>     print(message)
+        <Message id="...">
+        <Message id="...">
+        ...
+        ...
+
+        >>> more_messages = await messages.next()  # Retrieve more messages
+        >>> for message in more_messages:
+        >>>     print(message)
+        <Message id="...">
+        <Message id="...">
+        ...
+        ...
+        """
+        response = await self._get_dm_inbox(max_id)
+
+        if 'entries' not in response['inbox_initial_state']:
+            return Result([])
+        items = response['inbox_initial_state']['entries']
+        users = {m["id"]: m for m in response["inbox_initial_state"]["users"].values()}
+
+        messages = []
+        for item in items:
+            if 'message' not in item:
+                continue
+            message_info = item['message']['message_data']
+            user_info = users[message_info['sender_id']]
+            messages.append(Message(
+                self,
+                message_info,
+                message_info['sender_id'],
+                message_info['recipient_id'],
+                User(self, user_info)
+            ))
+
+        return Result(
+            messages,
+            partial(self.get_dm_inbox, messages[-1].id),
             messages[-1].id
         )
 

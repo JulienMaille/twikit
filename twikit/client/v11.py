@@ -449,6 +449,16 @@ class V11Client:
             headers=self.base._base_headers
         )
 
+    async def dm_inbox(self, max_id):
+        params = {}
+        if max_id is not None:
+            params['max_id'] = max_id
+        return await self.base.get(
+            Endpoint.DM_INBOX,
+            params=params,
+            headers=self.base._base_headers
+        )
+
     async def dm_conversation(self, conversation_id, max_id):
         params = {'context': 'FETCH_DM_CONVERSATION_HISTORY', 'include_conversation_info': True}
         if max_id is not None:
