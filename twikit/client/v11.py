@@ -81,7 +81,6 @@ class V11Client:
         headers = self.base._base_headers | {
             'x-guest-token': guest_token
         }
-        headers.pop('X-Twitter-Active-User')
         headers.pop('X-Twitter-Auth-Type')
 
         return await self.base.post(

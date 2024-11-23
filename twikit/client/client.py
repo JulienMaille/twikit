@@ -293,8 +293,8 @@ class Client:
         Base headers for Twitter API requests.
         """
         headers = {
-            'authorization': f'Bearer {self._token}',
-            'content-type': 'application/json',
+            'Authorization': f'Bearer {self._token}',
+            'Content-Type': 'application/json',
             'X-Twitter-Auth-Type': 'OAuth2Session',
             'X-Twitter-Active-User': 'yes',
             'Referer': f'https://{DOMAIN}/',
@@ -302,8 +302,8 @@ class Client:
         }
 
         if self.language is not None:
-            headers['Accept-Language'] = self.language
-            headers['X-Twitter-Client-Language'] = self.language
+            headers['Accept-Language'] = f"{self.language},{self.language.split('-')[0]};q=0.9"
+            headers['X-Twitter-Client-Language'] = self.language.split('-')[0]
 
         csrf_token = self._get_csrf_token()
         if csrf_token is not None:
@@ -365,6 +365,7 @@ class Client:
 
         flow = Flow(self, guest_token)
 
+        await flow.sso_init('apple')
         await flow.execute_task(params={'flow_name': 'login'}, data={
             'input_flow_data': {
                 'flow_context': {
@@ -450,6 +451,9 @@ class Client:
                     'link': 'next_link'
                 }
             })
+
+        if flow.task_id == 'DenyLoginSubtask':
+            raise TwitterException(flow.response['subtasks'][0]['cta']['secondary_text']['text'])
 
         await flow.execute_task({
             'subtask_id': 'LoginEnterPassword',

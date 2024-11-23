@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import base64
 import json
+import asyncio
+import random
 from datetime import datetime
 from httpx import AsyncHTTPTransport
 from typing import TYPE_CHECKING, Any, Awaitable, Generic, Iterator, Literal, TypedDict, TypeVar
@@ -85,6 +87,8 @@ class Flow:
         self.response = None
 
     async def execute_task(self, *subtask_inputs, **kwargs) -> None:
+        # wait a random time
+        await asyncio.sleep(random.uniform(2, 6))
         response, _ = await self._client.v11.onboarding_task(
             self.guest_token, self.token, list(subtask_inputs), **kwargs
         )
