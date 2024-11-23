@@ -663,12 +663,25 @@ class Client:
         """
         self._act_as = user_id
 
+    def user_id_known(self) -> str:
+        """
+        Tries to retrieve without query the user ID associated with the authenticated account.
+        """
+        if self._user_id is not None:
+            return self._user_id
+
+        match = re.search(r'u(?:%3D|=)(\d+)', self.http.cookies.get('twid', ""))
+        if match:
+            self._user_id = match.group(1)
+            return self._user_id
+
     async def user_id(self) -> str:
         """
         Retrieves the user ID associated with the authenticated account.
         """
-        if self._user_id is not None:
+        if self.user_id_known():
             return self._user_id
+
         response, _ = await self.v11.settings()
         screen_name = response['screen_name']
         self._user_id = (await self.get_user_by_screen_name(screen_name)).id
