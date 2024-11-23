@@ -3873,12 +3873,6 @@ class Client:
             user_id = tweet_data['user_id_str']
             user = users[user_id]
             tweet = Tweet(self, build_tweet_data(tweet_data), user)
-
-            tweet.in_reply_to_screen_name = tweet_data['in_reply_to_screen_name']
-            tweet.in_reply_to_status_id = tweet_data['in_reply_to_status_id']
-            tweet.mentions = tweet_data['entities']['user_mentions']
-            tweet.mentions = list({o['id_str']: o for o in self.mentions}.values())
-
             tweets[id] = tweet
 
         notifications = []

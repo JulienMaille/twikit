@@ -40,7 +40,7 @@ class Message:
         self.time: str = data['time']
         self.text: str = data['text']
         self.attachment: dict | None = data.get('attachment')
-        self.converstion_id: str | None = data.get('conversation_id')
+        self.conversation_id: str | None = data.get('conversation_id')
 
     async def reply(self, text: str, media_id: str | None = None) -> Message:
         """Replies to the message.

@@ -108,6 +108,8 @@ class Tweet:
         self.lang: str = legacy['lang']
         self.is_quote_status: bool = legacy['is_quote_status']
         self.in_reply_to: str | None = self._data['legacy'].get('in_reply_to_status_id_str')
+        self.in_reply_to_user_id: str | None = self._data['legacy'].get('in_reply_to_user_id_str')
+        self.in_reply_to_screen_name: str | None = self._data['legacy'].get('in_reply_to_screen_name')
         self.possibly_sensitive: bool = legacy.get('possibly_sensitive')
         self.possibly_sensitive_editable: bool = legacy.get('possibly_sensitive_editable')
         self.quote_count: int = legacy['quote_count']
