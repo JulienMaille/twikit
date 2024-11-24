@@ -164,7 +164,7 @@ class GuestClient:
         Base headers for Twitter API requests.
         """
         headers = {
-            'authorization': f'Bearer {self._token}',
+            'Authorization': f'Bearer {self._token}',
             'content-type': 'application/json',
             'X-Twitter-Active-User': 'yes',
             'Referer': 'https://twitter.com/',

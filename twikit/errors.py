@@ -12,6 +12,11 @@ class TwitterException(Exception):
         else:
             self.headers = dict(headers)
 
+class DenyLoginSubtask(TwitterException):
+    """
+    Exception raised for Login Request errors.
+    """
+
 class BadRequest(TwitterException):
     """
     Exception raised for 400 Bad Request errors.

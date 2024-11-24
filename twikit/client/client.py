@@ -25,6 +25,7 @@ from ..errors import (
     AccountSuspended,
     BadRequest,
     CouldNotTweet,
+    DenyLoginSubtask,
     Forbidden,
     InvalidMedia,
     NotFound,
@@ -453,7 +454,14 @@ class Client:
             })
 
         if flow.task_id == 'DenyLoginSubtask':
-            raise TwitterException(flow.response['subtasks'][0]['cta']['secondary_text']['text'])
+            res = flow.response['subtasks'][0]['cta']['secondary_text']['text']
+            await flow.execute_task({
+                'subtask_id': flow.task_id,
+                'cta': {
+                    'link': 'next_link'
+                }
+            })
+            raise DenyLoginSubtask(res)
 
         await flow.execute_task({
             'subtask_id': 'LoginEnterPassword',
@@ -464,7 +472,14 @@ class Client:
         })
 
         if flow.task_id == 'DenyLoginSubtask':
-            raise TwitterException(flow.response['subtasks'][0]['cta']['secondary_text']['text'])
+            res = flow.response['subtasks'][0]['cta']['secondary_text']['text']
+            await flow.execute_task({
+                'subtask_id': flow.task_id,
+                'cta': {
+                    'link': 'next_link'
+                }
+            })
+            raise DenyLoginSubtask(res)
 
         if flow.task_id == 'LoginAcid':
             if self.email_client:
@@ -472,7 +487,7 @@ class Client:
                 now_time = datetime.now(timezone.utc) - timedelta(seconds=30)
                 code = await self.email_client.get_email_code(now_time)
             else:
-            print(find_dict(flow.response, 'secondary_text', find_one=True)[0]['text'])
+                print(find_dict(flow.response, 'secondary_text', find_one=True)[0]['text'])
                 code = input('>>> ')
 
             await flow.execute_task({
