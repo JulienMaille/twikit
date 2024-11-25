@@ -1329,9 +1329,9 @@ class Client:
             richtext_options, edit_tweet_id, limit_mode
         )
         if is_note_tweet:
-            _result = response['data']['notetweet_create']['tweet_results']
+            _result = response.get('data', {}).get('notetweet_create', {}).get('tweet_results')
         else:
-            _result = response['data']['create_tweet']['tweet_results']
+            _result = response.get('data', {}).get('create_tweet', {}).get('tweet_results')
         if not _result:
             raise_exceptions_from_response(response['errors'])
             raise CouldNotTweet(

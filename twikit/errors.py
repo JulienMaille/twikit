@@ -95,6 +95,8 @@ class AccountLocked(TwitterException):
     """
 
 ERROR_CODE_TO_EXCEPTION: dict[int, TwitterException] = {
+    185: OverDailyLimit,
+    186: TweetTooLong,
     187: DuplicateTweet,
     324: InvalidMedia
 }
