@@ -85,14 +85,16 @@ class Flow:
         self._client = client
         self.guest_token = guest_token
         self.response = None
+        self.response_headers = None
 
     async def execute_task(self, *subtask_inputs, **kwargs) -> None:
         # wait a random time
-        await asyncio.sleep(random.uniform(2, 6))
-        response, _ = await self._client.v11.onboarding_task(
+        await asyncio.sleep(random.uniform(2, 4))
+        response, r = await self._client.v11.onboarding_task(
             self.guest_token, self.token, list(subtask_inputs), **kwargs
         )
         self.response = response
+        self.response_headers = r.headers
 
     async def sso_init(self, provider: str) -> None:
         await self._client.v11.sso_init(provider, self.guest_token)
@@ -235,7 +237,7 @@ def flatten_params(params: dict) -> dict:
     flattened_params = {}
     for key, value in params.items():
         if isinstance(value, (list, dict)):
-            value = json.dumps(value)
+            value = json.dumps(value, separators=(',', ':'))
         flattened_params[key] = value
     return flattened_params
 

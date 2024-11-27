@@ -9,17 +9,19 @@ from functools import partial
 from typing import Any, AsyncGenerator, Literal
 import time
 import random
+import uuid
 
 import filetype
 import pyotp
 from httpx import AsyncClient, AsyncHTTPTransport, Response
 from httpx._utils import URLPattern
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urlencode
+from oauthlib import oauth1
 
 from .._captcha import Capsolver
 from ..bookmark import BookmarkFolder
 from ..community import Community, CommunityMember
-from ..constants import TOKEN, DOMAIN
+from ..constants import TOKEN, TOKEN_OAUTH
 from ..errors import (
     AccountLocked,
     AccountSuspended,
@@ -60,6 +62,7 @@ from ..utils import (
 from ..x_client_transaction import ClientTransaction
 from ..tools.ui_metrics import solve_ui_metrics
 from ..tools.email_client import EmailClient
+from ..tools.twitter_auth import get_oauth_authorization
 from .gql import GQLClient
 from .v11 import V11Client
 
@@ -120,15 +123,17 @@ class Client:
         else:
             self.email_client = None
 
-        self._token = TOKEN
         self._user_id = None
         self._user_agent = user_agent or 'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_6_1) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Safari/605.1.15'
+        self._token = TOKEN_OAUTH if self.is_oauth() else TOKEN
         self._act_as = None
 
         self.gql = GQLClient(self)
         self.v11 = V11Client(self)
         self.rate_limits = {}
 
+    def is_oauth(self) -> bool:
+        return 'twitterandroid' in self._user_agent.lower()
 
     async def rate_limit_check(self, url) -> bool:
         if url not in self.rate_limits:
@@ -152,7 +157,6 @@ class Client:
                 self.rate_limits[url]["reset"] = float(response.headers["x-rate-limit-reset"])
         except Exception:
             pass
-        
 
     async def request(
         self,
@@ -168,22 +172,50 @@ class Client:
             raise TooManyRequests("Rate limit exceeded, retry after " + str(self.rate_limits[url]["reset"] - time.time()) + " seconds")
 
         headers = kwargs.pop("headers", {})
-        if not self.client_transaction.home_page_response:
+        if self.is_oauth():
+            # make sure url is in the form of api.twitter.com
+            url = url.replace('x.com/i/api/', 'api.twitter.com/')
+
+            if self.http.cookies.get('oauth_token'):
+                # forge oauth authorization header
+                full_url = url
+                if 'params' in kwargs:
+                    full_url += '?' + urlencode(kwargs.get('params'))
+                headers["Authorization"] = get_oauth_authorization(self.http.cookies.get('oauth_token'),
+                                                                   self.http.cookies.get('oauth_token_secret'),
+                                                                   method, full_url)
+
+            # test if json is passed in arguments
+            if method == 'GET':
+                headers.pop('Content-Type')
+
+            # remove oauth_* that we store in cookies and add guest_id
             cookies_backup = self.get_cookies().copy()
-            ct_headers = {
-                "Accept-Language": f"{self.language},{self.language.split('-')[0]};q=0.9",
-                "Cache-Control": "no-cache",
-                "Referer": f"https://{DOMAIN}",
-                "User-Agent": self._user_agent
-            }
-            await self.client_transaction.init(self.http, ct_headers)
+            guest_id = self.http.cookies.get('guest_id')
+            cookies = {'guest_id': self.http.cookies.get('guest_id')} if self.http.cookies.get('guest_id') else {}
+            self.set_cookies(cookies, clear_cookies=True)
+            response = await self.http.request(method, url, headers=headers, **kwargs)
             self.set_cookies(cookies_backup, clear_cookies=True)
+        else:
+            if not self.client_transaction.home_page_response:
+                # init for 'X-Client-Transaction-Id'
+                cookies_backup = self.get_cookies().copy()
+                ct_headers = {
+                    "Accept-Language": f"{self.language},{self.language.split('-')[0]};q=0.9",
+                    "Cache-Control": "no-cache",
+                    "Referer": "https://x.com",
+                    "User-Agent": self._user_agent
+                }
+                await self.client_transaction.init(self.http, ct_headers)
+                self.set_cookies(cookies_backup, clear_cookies=True)
+
+            # forge 'X-Client-Transaction-Id' header
             tid = self.client_transaction.generate_transaction_id(method=method, path=urlparse(url).path)
             headers["X-Client-Transaction-Id"] = tid
 
-        cookies_backup = self.get_cookies().copy()
-        response = await self.http.request(method, url, headers=headers, **kwargs)
-        self._remove_duplicate_ct0_cookie()
+            cookies_backup = self.get_cookies().copy()
+            response = await self.http.request(method, url, headers=headers, **kwargs)
+            self._remove_duplicate_ct0_cookie()
 
         try:
             response_data = response.json()
@@ -202,7 +234,7 @@ class Client:
                 if self.captcha_solver is None:
                     raise AccountLocked(
                         'Your account is locked. Visit '
-                        f'https://{DOMAIN}/account/access to unlock it.'
+                        'https://x.com/account/access to unlock it.'
                         f'auth_token={self.http.cookies.get('auth_token')} '
                         f'ct0={self.http.cookies.get('ct0')}'
                     )
@@ -293,22 +325,61 @@ class Client:
         """
         Base headers for Twitter API requests.
         """
-        headers = {
-            'Authorization': f'Bearer {self._token}',
-            'Content-Type': 'application/json',
-            'X-Twitter-Auth-Type': 'OAuth2Session',
-            'X-Twitter-Active-User': 'yes',
-            'Referer': f'https://{DOMAIN}/',
-            'User-Agent': self._user_agent,
-        }
+        if self.is_oauth():
+            headers = {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+                'Cache-Control': 'no-store',
+                'X-B3-Traceid': ''.join(random.choice('0123456789abcdf') for i in range(16)),
+                'Timezone': 'Europe/Paris',
+                'X-Twitter-Active-User': 'yes',
+                'X-Twitter-Client': 'TwitterAndroid',
+                'X-Twitter-Client-Flavor': '',
+                'X-Twitter-API-Version': '5',
+                'X-Twitter-Client-Version': '10.53.2-release.0',
+                'X-Twitter-Client-Limit-Ad-Tracking': '0',
+                'Os-Security-Patch-Level': '2021-08-05',
+                'Host': 'api.twitter.com',
+                'User-Agent': self._user_agent
+            }
+            if self.user_id_known():
+                headers['X-Twitter-Client-Deviceid'] = str(uuid.uuid5(uuid.NAMESPACE_DNS, self.user_id_known())).replace('-', '')[:16]
+                headers['X-Client-Uuid'] = str(uuid.uuid5(uuid.NAMESPACE_URL, self.user_id_known()))
+            if not self.http.cookies.get('oauth_token'):
+                headers['Authorization'] = f'Bearer {self._token}'
+            if self.http.cookies.get('kdt'):
+                headers['Kdt'] = self.http.cookies.get('kdt')
+            if self.http.cookies.get('att'):
+                headers['Att'] = self.http.cookies.get('att')
+            if self.language is not None:
+                headers['Accept-Language'] = self.language
+                headers['X-Twitter-Client-Language'] = self.language
+        else:
+            ua = re.search(r'Chrome/(\d+)', self._user_agent).group(1)
+            headers = {
+                'Authorization': f'Bearer {self._token}',
+                'Accept': '*/*',
+                'Content-Type': 'application/json',
+                'X-Twitter-Auth-Type': 'OAuth2Session',
+                'X-Twitter-Active-User': 'yes',
+                'Referer': 'https://x.com/',
+                'User-Agent': self._user_agent,
+                'Origin': 'https://x.com/',
+                'Priority': 'u=1, i',
+                #'sec-ch-ua': f'"Chromium";v="{ua}", "Not;A=Brand";v="24", "Google Chrome";v="{ua}"',
+                #'sec-ch-ua-mobile': '?0',
+                #'sec-fetch-dest': 'empty',
+                #'sec-fetch-mode': 'cors',
+            }
 
-        if self.language is not None:
-            headers['Accept-Language'] = f"{self.language},{self.language.split('-')[0]};q=0.9"
-            headers['X-Twitter-Client-Language'] = self.language.split('-')[0]
+            if self.language is not None:
+                headers['Accept-Language'] = f"{self.language},{self.language.split('-')[0]};q=0.9"
+                headers['X-Twitter-Client-Language'] = self.language.split('-')[0]
 
-        csrf_token = self._get_csrf_token()
-        if csrf_token is not None:
-            headers['X-Csrf-Token'] = csrf_token
+            csrf_token = self._get_csrf_token()
+            if csrf_token is not None:
+                headers['X-Csrf-Token'] = csrf_token
+
         if self._act_as is not None:
             headers['X-Act-As-User-Id'] = self._act_as
         return headers
@@ -361,6 +432,19 @@ class Client:
         ...     password='00000000'
         ... )
         """
+        if self.is_oauth():
+            res = await self._login_oauth(auth_info_1=auth_info_1, auth_info_2=auth_info_2, password=password, totp_secret=totp_secret)
+        else:
+            res = await self._login_basic(auth_info_1=auth_info_1, auth_info_2=auth_info_2, password=password, totp_secret=totp_secret)
+
+    async def _login_basic(
+        self,
+        *,
+        auth_info_1: str,
+        auth_info_2: str | None = None,
+        password: str,
+        totp_secret: str | None = None
+    ) -> dict:
         self.http.cookies.clear()
         guest_token = await self._get_guest_token()
 
@@ -483,34 +567,38 @@ class Client:
 
         if flow.task_id == 'LoginAcid':
             if self.email_client:
-                print("Waiting for the email auth challange")
-                now_time = datetime.now(timezone.utc) - timedelta(seconds=30)
-                code = await self.email_client.get_email_code(now_time)
+                print("Waiting for the email auth challenge")
+                code = await self.email_client.get_email_code()
             else:
                 print(find_dict(flow.response, 'secondary_text', find_one=True)[0]['text'])
                 code = input('>>> ')
 
             await flow.execute_task({
-                'subtask_id': 'LoginAcid',
+                'subtask_id': flow.task_id,
                 'enter_text': {
                     'text': code,
                     'link': 'next_link'
                 }
             })
-            
+
             return flow.response
 
-        await flow.execute_task({
-            'subtask_id': 'AccountDuplicationCheck',
-            'check_logged_in_account': {
-                'link': 'AccountDuplicationCheck_false'
-            }
-        })
+        if flow.task_id == 'LoginSuccessSubtask':
+            await flow.execute_task({
+                'subtask_id': flow.task_id,
+                'open_account': {
+                    'link': 'next_link'
+                }
+            })
+            return flow.response
 
-        if not flow.response['subtasks']:
-            return
-
-        self._user_id = find_dict(flow.response, 'id_str', find_one=True)[0]
+        if flow.task_id == 'AccountDuplicationCheck':
+            await flow.execute_task({
+                'subtask_id': flow.task_id,
+                'check_logged_in_account': {
+                    'link': 'AccountDuplicationCheck_false'
+                }
+            })
 
         if flow.task_id == 'LoginTwoFactorAuthChallenge':
             if totp_secret is None:
@@ -528,6 +616,131 @@ class Client:
             })
 
         return flow.response
+
+    async def _login_oauth(
+            self,
+            *,
+            auth_info_1: str,
+            auth_info_2: str | None = None,
+            password: str,
+            totp_secret: str | None = None
+    ) -> dict:
+        self.http.cookies.clear()
+        guest_token = await self._get_guest_token()
+
+        flow = Flow(self, guest_token)
+
+        await flow.execute_task(params={
+            'flow_name': 'login',
+            'api_version': '1',
+            'known_device_token': ''
+        }, data={
+            'input_flow_data': {
+                'country_code': None,
+                'flow_context': {
+                    'referrer_context': {
+                        'referral_details': 'utm_source=google-play&utm_medium=organic',
+                        'referrer_url': ''
+                    },
+                    'start_location': {
+                        'location': 'deeplink'
+                    }
+                },
+                'requested_variant': None,
+                'target_user_id': 0
+            }
+        })
+
+        # check base_header has att for next request
+        self.http.cookies.set('att', flow.response_headers.get('att'))
+
+        await flow.execute_task({
+            'subtask_id': 'LoginEnterUserIdentifier',
+            'enter_text': {
+                'suggestion_id': None,
+                'text': auth_info_1,
+                'link': 'next_link'
+            }
+        })
+
+        if flow.task_id == 'DenyLoginSubtask':
+            res = flow.response['subtasks'][0]['cta']['secondary_text']['text']
+            await flow.execute_task({
+                'subtask_id': flow.task_id,
+                'cta': {
+                    'link': 'next_link'
+                }
+            })
+            raise DenyLoginSubtask(res)
+
+        await flow.execute_task({
+            'subtask_id': 'LoginEnterPassword',
+            'enter_password': {
+                'password': password,
+                'link': 'next_link'
+            }
+        })
+
+        if flow.task_id == 'DenyLoginSubtask':
+            res = flow.response['subtasks'][0]['cta']['secondary_text']['text']
+            await flow.execute_task({
+                'subtask_id': flow.task_id,
+                'cta': {
+                    'link': 'next_link'
+                }
+            })
+            raise DenyLoginSubtask(res)
+
+        if flow.task_id == 'LoginAcid':
+            if self.email_client:
+                print("Waiting for the email auth challenge")
+                code = await self.email_client.get_email_code()
+            else:
+                print(find_dict(flow.response, 'secondary_text', find_one=True)[0]['text'])
+                code = input('>>> ')
+
+            await flow.execute_task({
+                'subtask_id': flow.task_id,
+                'enter_text': {
+                    'suggestion_id': None,
+                    'text': code,
+                    'link': 'next_link'
+                }
+            })
+
+        if flow.task_id == 'LoginTwoFactorAuthChallenge':
+            if totp_secret is None:
+                print(find_dict(flow.response, 'secondary_text', find_one=True)[0]['text'])
+                totp_code = input('>>>')
+            else:
+                totp_code = pyotp.TOTP(totp_secret).now()
+
+            await flow.execute_task({
+                'subtask_id': flow.task_id,
+                'enter_text': {
+                    'text': totp_code,
+                    'link': 'next_link'
+                }
+            })
+
+        res = None
+        if flow.task_id == 'LoginSuccessSubtask':
+            res = find_dict(flow.response, 'open_account', find_one=True)[0]
+            self.http.cookies.pop('att')
+            self.http.cookies.set('oauth_token', res['oauth_token'])
+            self.http.cookies.set('oauth_token_secret', res['oauth_token_secret'])
+            self.http.cookies.set('kdt', res['known_device_token'])
+            self.http.cookies.set('id_str', res['user']['id_str'])
+            self._user_id = res['user']['id_str']
+
+            await flow.execute_task({
+                'subtask_id': flow.task_id,
+                'open_account': {
+                    'link': 'next_link'
+                }
+            })
+
+        return res
 
     async def logout(self) -> Response:
         """
@@ -637,7 +850,7 @@ class Client:
         .set_cookies
         """
         with open(path, 'w', encoding='utf-8') as f:
-            json.dump(self.get_cookies(), f)
+            json.dump(self.get_cookies(), f, indent=2)
 
     def set_cookies(self, cookies: dict, clear_cookies: bool = False) -> None:
         """
@@ -704,6 +917,11 @@ class Client:
         Tries to retrieve without query the user ID associated with the authenticated account.
         """
         if self._user_id is not None:
+            return self._user_id
+
+        id_str = self.http.cookies.get('id_str')
+        if id_str:
+            self._user_id = id_str
             return self._user_id
 
         match = re.search(r'u(?:%3D|=)(\d+)', self.http.cookies.get('twid', ""))
@@ -4309,7 +4527,7 @@ class Client:
         )
 
     async def _stream(self, topics: set[str]) -> AsyncGenerator[tuple[str, Payload]]:
-        url = f'https://api.{DOMAIN}/live_pipeline/events'
+        url = 'https://api.x.com/live_pipeline/events'
         params = {'topics': ','.join(topics)}
         headers = self._base_headers
         headers.pop('Content-Type')

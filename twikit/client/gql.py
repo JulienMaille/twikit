@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from ..constants import (
-    DOMAIN,
     BOOKMARK_FOLDER_TIMELINE_FEATURES,
     COMMUNITY_NOTE_FEATURES,
     COMMUNITY_TWEETS_FEATURES,
@@ -28,7 +27,7 @@ if TYPE_CHECKING:
 class Endpoint:
     @staticmethod
     def url(path):
-        return f'https://{DOMAIN}/i/api/graphql/{path}'
+        return 'https://x.com/i/api/graphql/' + path
 
     SEARCH_TIMELINE = url('flaR-PUMshxFWZWPNpq4zA/SearchTimeline')
     SIMILAR_POSTS = url('EToazR74i0rJyZYalfVEAQ/SimilarPosts')

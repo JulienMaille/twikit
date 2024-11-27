@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING, NamedTuple
 
 from bs4 import BeautifulSoup
 from httpx import Response
-from ..constants import DOMAIN
 
 if TYPE_CHECKING:
     from ..client.client import Client
@@ -25,7 +24,7 @@ class CaptchaSolver:
     client: Client
     max_attempts: int
 
-    CAPTCHA_URL = f'https://{DOMAIN}/account/access'
+    CAPTCHA_URL = 'https://x.com/account/access'
     CAPTCHA_SITE_KEY = '0152B4EB-D2DC-460A-89A1-629838B529C9'
 
     async def get_unlock_html(self) -> tuple[Response, UnlockHTML]:
@@ -41,7 +40,7 @@ class CaptchaSolver:
 
     async def ui_metrix(self) -> str:
         js, _ = await self.client.get(
-            f'https://{DOMAIN}/i/js_inst?c_name=ui_metrics'
+            f'https://twitter.com/i/js_inst?c_name=ui_metrics'
         )
         return re.findall(r'return ({.*?});', js, re.DOTALL)[0]
 
