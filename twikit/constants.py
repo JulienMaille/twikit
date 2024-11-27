@@ -1,7 +1,11 @@
 # This token is common to all accounts and does not need to be changed.
 TOKEN = 'AAAAAAAAAAAAAAAAAAAAANRILgAAAAAAnNwIzUejRCOuH5E6I8xnZz4puTs%3D1Zv7ttfk8LF81IUq16cHjhLTvJu4FA33AGWWjCpTnA'
+TOKEN_OAUTH = 'AAAAAAAAAAAAAAAAAAAAAFXzAwAAAAAAMHCxpeSDG1gLNLghVe8d74hl6k4%3DRUMF4xAQLsbeBhTSRrCiQpJtxoGWeyHrDb5te2jpGskWDFW82F'
 
 DOMAIN = 'x.com'
+
+TW_CONSUMER_KEY = "3nVuSoBZnx6U4vzUxf5w"
+TW_CONSUMER_SECRET = "Bcs59EFbbsdF6Sl9Ng71smgStWEGwXXKSjYvPVt7qys"
 
 FEATURES = {
     'creator_subscriptions_tweet_preview_api_enabled': True,

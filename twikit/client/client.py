@@ -4303,7 +4303,7 @@ class Client:
         url = f'https://api.{DOMAIN}/live_pipeline/events'
         params = {'topics': ','.join(topics)}
         headers = self._base_headers
-        headers.pop('content-type')
+        headers.pop('Content-Type')
 
         async with self.http.stream('GET', url, params=params, headers=headers, timeout=None) as response:
             self._remove_duplicate_ct0_cookie()

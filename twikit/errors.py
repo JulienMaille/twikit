@@ -63,6 +63,16 @@ class CouldNotTweet(TwitterException):
     Exception raised when a tweet could not be sent.
     """
 
+class OverDailyLimit(CouldNotTweet):
+    """
+    Exception raised when user is over his daily limit of tweets.
+    """
+
+class TweetTooLong(CouldNotTweet):
+    """
+    Exception raised when a tweet is too long.
+    """
+
 class DuplicateTweet(CouldNotTweet):
     """
     Exception raised when a tweet is a duplicate of another.

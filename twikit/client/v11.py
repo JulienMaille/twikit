@@ -56,8 +56,10 @@ class V11Client:
 
     async def guest_activate(self):
         headers = self.base._base_headers
-        headers.pop('X-Twitter-Active-User', None)
-        headers.pop('X-Twitter-Auth-Type', None)
+        if 'X-Twitter-Active-User' in headers:
+            headers.pop('X-Twitter-Active-User')
+        if 'X-Twitter-Auth-Type' in headers:
+            headers.pop('X-Twitter-Auth-Type')
         return await self.base.post(
             Endpoint.GUEST_ACTIVATE,
             headers=headers,
@@ -81,7 +83,8 @@ class V11Client:
         headers = self.base._base_headers | {
             'x-guest-token': guest_token
         }
-        headers.pop('X-Twitter-Auth-Type')
+        if 'X-Twitter-Auth-Type' in headers:
+            headers.pop('X-Twitter-Auth-Type')
 
         return await self.base.post(
             Endpoint.ONBOARDING_TASK,
@@ -138,7 +141,7 @@ class V11Client:
             'segment_index': segment_index,
         }
         headers = self.base._base_headers
-        headers.pop('content-type')
+        headers.pop('Content-Type')
         files = {
             'media': (
                 'blob',
@@ -200,7 +203,7 @@ class V11Client:
             card_data[f'twitter:string:choice{i}_label'] = choice
 
         data = {'card_data': json.dumps(card_data)}
-        headers = self.base._base_headers | {'content-type': 'application/x-www-form-urlencoded'}
+        headers = self.base._base_headers | {'Content-Type': 'application/x-www-form-urlencoded'}
         return await self.base.post(
             Endpoint.CREATE_CARD,
             data=data,
@@ -216,7 +219,7 @@ class V11Client:
             'twitter:string:selected_choice': selected_choice
         }
         headers = self.base._base_headers | {
-            'content-type': 'application/x-www-form-urlencoded'
+            'Content-Type': 'application/x-www-form-urlencoded'
         }
         return await self.base.post(
             Endpoint.VOTE,
@@ -283,7 +286,7 @@ class V11Client:
             'user_id': user_id
         }
         headers = self.base._base_headers | {
-            'content-type': 'application/x-www-form-urlencoded'
+            'Content-Type': 'application/x-www-form-urlencoded'
         }
         return await self.base.post(
             Endpoint.CREATE_FRIENDSHIPS,
@@ -308,7 +311,7 @@ class V11Client:
             'user_id': user_id
         }
         headers = self.base._base_headers | {
-            'content-type': 'application/x-www-form-urlencoded'
+            'Content-Type': 'application/x-www-form-urlencoded'
         }
         return await self.base.post(
             Endpoint.DESTROY_FRIENDSHIPS,
@@ -319,7 +322,7 @@ class V11Client:
     async def create_blocks(self, user_id):
         data = {'user_id': user_id}
         headers = self.base._base_headers
-        headers['content-type'] = 'application/x-www-form-urlencoded'
+        headers['Content-Type'] = 'application/x-www-form-urlencoded'
         return await self.base.post(
             Endpoint.CREATE_BLOCKS,
             data=data,
@@ -329,7 +332,7 @@ class V11Client:
     async def destroy_blocks(self, user_id):
         data = {'user_id': user_id}
         headers = self.base._base_headers
-        headers['content-type'] = 'application/x-www-form-urlencoded'
+        headers['Content-Type'] = 'application/x-www-form-urlencoded'
         return await self.base.post(
             Endpoint.DESTROY_BLOCKS,
             data=data,
@@ -339,7 +342,7 @@ class V11Client:
     async def create_mutes(self, user_id):
         data = {'user_id': user_id}
         headers = self.base._base_headers
-        headers['content-type'] = 'application/x-www-form-urlencoded'
+        headers['Content-Type'] = 'application/x-www-form-urlencoded'
         return await self.base.post(
             Endpoint.CREATE_MUTES,
             data=data,
@@ -349,7 +352,7 @@ class V11Client:
     async def destroy_mutes(self, user_id):
         data = {'user_id': user_id}
         headers = self.base._base_headers
-        headers['content-type'] = 'application/x-www-form-urlencoded'
+        headers['Content-Type'] = 'application/x-www-form-urlencoded'
         return await self.base.post(
             Endpoint.DESTROY_MUTES,
             data=data,
@@ -472,7 +475,7 @@ class V11Client:
     async def conversation_update_name(self, group_id, name):
         data = {'name': name}
         headers = self.base._base_headers
-        headers['content-type'] = 'application/x-www-form-urlencoded'
+        headers['Content-Type'] = 'application/x-www-form-urlencoded'
         return await self.base.post(
             Endpoint.CONVERSATION_UPDATE_NAME.format(group_id),
             data=data,
@@ -505,7 +508,7 @@ class V11Client:
             'unsub_topics': unsubscribe
         }
         headers = self.base._base_headers
-        headers['content-type'] = 'application/x-www-form-urlencoded'
+        headers['Content-Type'] = 'application/x-www-form-urlencoded'
         headers['LivePipeline-Session'] = session
         return await self.base.post(
             Endpoint.LIVE_PIPELINE_UPDATE_SUBSCRIPTIONS, data=data, headers=headers
