@@ -1417,6 +1417,15 @@ class Client:
         _, response = await self.gql.delete_tweet(tweet_id)
         return response
 
+    async def get_viewer_user_query(self) -> User:
+        response, _ = await self.gql.viewer_user_query()
+
+        if 'viewer' not in response['data']:
+            raise UserNotFound('The viewer does not exist.')
+        viewer_data = response['data']['viewer']['userResult']['result']
+
+        return User(self, viewer_data)
+
     async def get_user_by_screen_name(self, screen_name: str) -> User:
         """
         Fetches a user by screen name.

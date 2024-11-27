@@ -36,6 +36,7 @@ class Endpoint:
     CREATE_TWEET = url('SiM_cAu83R0wnrpmKQQSEw/CreateTweet')
     CREATE_SCHEDULED_TWEET = url('LCVzRQGxOaGnOnYH01NQXg/CreateScheduledTweet')
     DELETE_TWEET = url('VaenaVgh5q5ih7kvyVjgtg/DeleteTweet')
+    VIEWER_USER_QUERY = url('_nUEOKeLIbspZSgDmgbzxw/ViewerUserQuery')
     USER_BY_SCREEN_NAME = url('NimuplG1OB7Fd2btCLdBOw/UserByScreenName')
     USER_BY_REST_ID = url('tD8zKvQzwY3kdx5yz6YmOw/UserByRestId')
     TWEET_DETAIL = url('U0HTv-bAWTBYylwEMT7x5A/TweetDetail')
@@ -239,6 +240,25 @@ class GQLClient:
             'dark_request': False
         }
         return await self.gql_post(Endpoint.DELETE_TWEET, variables)
+
+    async def viewer_user_query(self):
+        variables = {
+           "include_profile_info": True,
+           "includeEditPerspective": False,
+           "includeHasBirdwatchNotes": False,
+           "includeTweetImpression": True,
+           "includeEditControl": True
+        }
+        params = {
+            "immersive_video_status_linkable_timestamps": False,
+            "blue_business_profile_image_shape_enabled": True,
+            "graduated_access_invisible_treatment_enabled": True,
+            "subscriptions_verification_info_enabled": True,
+            "super_follow_exclusive_tweet_notifications_enabled": True,
+            "super_follow_badge_privacy_enabled": True,
+            "super_follow_user_api_enabled": True
+        }
+        return await self.gql_get(Endpoint.VIEWER_USER_QUERY, variables, params)
 
     async def user_by_screen_name(self, screen_name):
         variables = {
