@@ -7,8 +7,6 @@ from datetime import datetime, timezone, timedelta
 import logging
 
 
-logger = logging.getLogger(__name__)
-
 class EmailLoginError(Exception):
     def __init__(self, message="Email login error"):
         self.message = message
@@ -23,6 +21,7 @@ class EmailClient:
         "yahoo.com": "imap.mail.yahoo.com",
         "icloud.com": "imap.mail.me.com",
         "outlook.com": "imap-mail.outlook.com",
+        "outlook.fr": "imap-mail.outlook.com",
         "hotmail.com": "imap-mail.outlook.com",
         "aol.com": "imap.aol.com",
         "gmx.com": "imap.gmx.com",
@@ -49,6 +48,7 @@ class EmailClient:
             return cls.IMAP_MAPPING[email_domain]
         return f"imap.{email_domain}"
     def __init__(self, email: str, password: str, wait_email_code: int):
+        self.logged_in = False
         self.email = email
         self.password = password
         self.wait_email_code = wait_email_code
@@ -58,9 +58,10 @@ class EmailClient:
         try:
             self.imap.login(self.email, self.password)
             self.imap.select("INBOX", readonly=True)
-            logger.info(f"Logged into {self.email} on {self.domain}")
+            self.logged_in = True
+            print(f"Logged into {self.email} on {self.domain}")
         except imaplib.IMAP4.error as e:
-            logger.error(f"Error logging into {self.email} on {self.domain}: {e}")
+            print(f"Error logging into {self.email} on {self.domain}: {e}")
             raise EmailLoginError() from e
     async def _wait_email_code(self, count: int, min_t: datetime | None) -> str | None:
         for i in range(count, 0, -1):
@@ -72,13 +73,14 @@ class EmailClient:
                     msg_time = datetime.strptime(msg_time, "%a, %d %b %Y %H:%M:%S %z")
                     msg_from = str(msg.get("From", "")).lower()
                     msg_subj = str(msg.get("Subject", "")).lower()
-                    logger.info(f"({i} of {count}) {msg_from} - {msg_time} - {msg_subj}")
+                    print(f"({i} of {count}) {msg_from} - {msg_time} - {msg_subj}")
                     if "info@x.com" in msg_from and "confirmation code is" in msg_subj:
                         return msg_subj.split(" ")[-1].strip()
         return None
     async def get_email_code(self) -> str:
         try:
-            logger.info(f"Waiting for confirmation code for {self.email}...")
+            if not self.logged_in:
+                await self.login()
             start_time = time.time()
             while True:
                 _, rep = self.imap.select("INBOX")
