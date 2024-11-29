@@ -16,7 +16,6 @@ import pyotp
 from httpx import AsyncClient, AsyncHTTPTransport, Response
 from httpx._utils import URLPattern
 from urllib.parse import urlparse, urlencode
-from oauthlib import oauth1
 
 from .._captcha import Capsolver
 from ..bookmark import BookmarkFolder
@@ -174,18 +173,19 @@ class Client:
         headers = kwargs.pop("headers", {})
         if self.is_oauth():
             # make sure url is in the form of api.twitter.com
+            url = url.replace('api.x.com/', 'api.twitter.com/')
             url = url.replace('x.com/i/api/', 'api.twitter.com/')
 
             if self.http.cookies.get('oauth_token'):
                 # forge oauth authorization header
-                full_url = url
+                encoded_url = url
                 if 'params' in kwargs:
-                    full_url += '?' + urlencode(kwargs.get('params'))
+                    encoded_url += '?' + urlencode(kwargs.get('params'))
+                encoded_body = urlencode(kwargs.get('data', ''))
                 headers["Authorization"] = get_oauth_authorization(self.http.cookies.get('oauth_token'),
                                                                    self.http.cookies.get('oauth_token_secret'),
-                                                                   method, full_url)
+                                                                   method, encoded_url, body=encoded_body)
 
-            # test if json is passed in arguments
             if method == 'GET':
                 headers.pop('Content-Type')
 
@@ -216,7 +216,6 @@ class Client:
             cookies_backup = self.get_cookies().copy()
             response = await self.http.request(method, url, headers=headers, **kwargs)
             self._remove_duplicate_ct0_cookie()
-
         try:
             response_data = response.json()
         except json.decoder.JSONDecodeError:
@@ -733,12 +732,13 @@ class Client:
             self.http.cookies.set('id_str', res['user']['id_str'])
             self._user_id = res['user']['id_str']
 
-            await flow.execute_task({
-                'subtask_id': flow.task_id,
-                'open_account': {
-                    'link': 'next_link'
-                }
-            })
+            # TODO: remove 'x-guest-token' from next request
+            #await flow.execute_task({
+            #    'subtask_id': flow.task_id,
+            #    'open_account': {
+            #        'link': 'next_link'
+            #    }
+            #})
 
         return res
 
