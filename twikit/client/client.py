@@ -3436,23 +3436,26 @@ class Client:
         """
         response = await self._get_dm_inbox(max_id)
 
-        if 'entries' not in response['inbox_initial_state']:
+        global_objects = response['inbox_initial_state']
+        if 'entries' not in global_objects:
             return Result([])
-        items = response['inbox_initial_state']['entries']
-        users = {m["id"]: m for m in response["inbox_initial_state"]["users"].values()}
+
+        users = {
+            id: User(self, build_user_data(data))
+            for id, data in global_objects.get('users', {}).items()
+        }
 
         messages = []
-        for item in items:
+        for item in global_objects['entries']:
             if 'message' not in item:
                 continue
             message_info = item['message']['message_data']
-            user_info = users[message_info['sender_id']]
             messages.append(Message(
                 self,
                 message_info,
                 message_info['sender_id'],
                 message_info['recipient_id'],
-                User(self, user_info)
+                users[message_info['sender_id']]
             ))
 
         return Result(

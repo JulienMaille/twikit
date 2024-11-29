@@ -118,7 +118,7 @@ class Tweet:
         self.favorite_count: int = legacy['favorite_count']
         self.favorited: bool = legacy['favorited']
         self.retweet_count: int = legacy['retweet_count']
-        self.retweeted: bool = legacy['retweeted']
+        self.retweeted: bool = legacy.get('retweeted')
         self._place_data = legacy.get('place')
         self.editable_until_msecs: int = data['edit_control'].get('editable_until_msecs')
         self.is_translatable: bool = data.get('is_translatable')
