@@ -134,7 +134,7 @@ class Client:
     def is_oauth(self) -> bool:
         return 'twitterandroid' in self._user_agent.lower()
 
-    async def rate_limit_check(self, url) -> bool:
+    def rate_limit_check(self, url) -> bool:
         if url not in self.rate_limits:
             self.rate_limits[url] = {"reset": time.time() + 900, "rate_limit_max": 50, "remaining": 50} 
             return True
@@ -142,11 +142,10 @@ class Client:
             return True
         elif self.rate_limits[url]["remaining"] > 0:
             return True
-        else: 
-           
+        else:
             return False
 
-    async def rate_limit_update(self, url, response: Response) -> None:
+    def rate_limit_update(self, url, response: Response) -> None:
         try:
             if "x-rate-limit-limit" in response.headers:
                 self.rate_limits[url]["rate_limit_max"] = int(response.headers["x-rate-limit-limit"])
@@ -167,7 +166,7 @@ class Client:
     ) -> tuple[dict | Any, Response]:
         ':meta private:'
 
-        if not await self.rate_limit_check(url):
+        if not self.rate_limit_check(url):
             raise TooManyRequests("Rate limit exceeded, retry after " + str(self.rate_limits[url]["reset"] - time.time()) + " seconds")
 
         headers = kwargs.pop("headers", {})
@@ -233,7 +232,7 @@ class Client:
                 if self.captcha_solver is None:
                     raise AccountLocked(
                         'Your account is locked. Visit '
-                        'https://x.com/account/access to unlock it.'
+                        'https://x.com/account/access to unlock it. '
                         f'auth_token={self.http.cookies.get('auth_token')} '
                         f'ct0={self.http.cookies.get('ct0')}'
                     )
@@ -264,7 +263,7 @@ class Client:
             elif status_code == 429:
                 if await self._get_user_state() == 'suspended':
                     raise AccountSuspended(message, headers=response.headers)
-                await self.rate_limit_update(url, response)
+                self.rate_limit_update(url, response)
                 raise TooManyRequests(message, headers=response.headers)
             elif 500 <= status_code < 600:
                 raise ServerError(message, headers=response.headers)
@@ -272,8 +271,7 @@ class Client:
                 raise TwitterException(message, headers=response.headers)
 
         if status_code == 200:
-            await self.rate_limit_update(url, response)
-            return response_data, response
+            self.rate_limit_update(url, response)
 
         return response_data, response
 
