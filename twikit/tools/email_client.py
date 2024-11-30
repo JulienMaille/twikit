@@ -76,6 +76,13 @@ class EmailClient:
                     print(f"({i} of {count}) {msg_from} - {msg_time} - {msg_subj}")
                     if "info@x.com" in msg_from and "confirmation code is" in msg_subj:
                         return msg_subj.split(" ")[-1].strip()
+                    elif "verify@x.com" in msg_from and "confirm_your_email" in msg_subj:
+                        text = "".join([part.get_payload(decode=True).decode() for part in msg.walk() if part.get_content_type() == "text/plain"])
+                        lines = text.splitlines()
+                        lines = [line.strip() for line in lines if line.strip()]  # Remove empty lines and whitespace
+                        for line in lines:
+                            if line.isdigit() and len(line) == 6:  # Checks for a 6-digit numeric code
+                                return line
         return None
     async def get_email_code(self) -> str:
         try:
