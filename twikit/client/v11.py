@@ -453,7 +453,40 @@ class V11Client:
         )
 
     async def dm_inbox(self, max_id):
-        params = {}
+        params = {
+            'nsfw_filtering_enabled': False,
+            'include_profile_interstitial_type': 1,
+            'include_blocking': 1,
+            'include_blocked_by': 1,
+            'include_followed_by': 1,
+            'include_want_retweets': 1,
+            'include_mute_edge': 1,
+            'include_can_dm': 1,
+            'include_can_media_tag': 1,
+            'include_ext_is_blue_verified': 1,
+            'include_ext_verified_type': 1,
+            'include_ext_profile_image_shape': 1,
+            'skip_status': 1,
+            'dm_secret_conversations_enabled': False,
+            'krs_registration_enabled': True,
+            'cards_platform': 'Web-12',
+            'include_cards': 1,
+            'include_ext_alt_text': True,
+            'include_ext_limited_action_results': True,
+            'include_quote_count': True,
+            'include_reply_count': 1,
+            'tweet_mode': 'extended',
+            'include_ext_views': True,
+            'dm_users': True,
+            'include_groups': True,
+            'include_inbox_timelines': True,
+            'include_ext_media_color': True,
+            'supports_reactions': True,
+            'supports_edit': True,
+            'include_ext_edit_control': True,
+            'include_ext_business_affiliations_label': True,
+            'ext': 'mediaColor,altText,mediaStats,highlightedLabel,voiceInfo,birdwatchPivot,superFollowMetadata,unmentionInfo,editControl,article'
+        }
         if max_id is not None:
             params['max_id'] = max_id
         return await self.base.get(
@@ -484,7 +517,39 @@ class V11Client:
         )
 
     async def _notifications(self, endpoint, count, cursor):
-        params = {'count': count}
+        params = {
+            'include_profile_interstitial_type': 1,
+            'include_blocking': 1,
+            'include_blocked_by': 1,
+            'include_followed_by': 1,
+            'include_want_retweets': 1,
+            'include_mute_edge': 1,
+            'include_can_dm': 1,
+            'include_can_media_tag': 1,
+            'include_ext_is_blue_verified': 1,
+            'include_ext_verified_type': 1,
+            'include_ext_profile_image_shape': 1,
+            'skip_status': 1,
+            'cards_platform': 'Web-12',
+            'include_cards': 1,
+            'include_ext_alt_text': True,
+            'include_ext_limited_action_results': True,
+            'include_quote_count': True,
+            'include_reply_count': 1,
+            'tweet_mode': 'extended',
+            'include_ext_views': True,
+            'include_entities': True,
+            'include_user_entities': True,
+            'include_ext_media_color': True,
+            'include_ext_media_availability': True,
+            'include_ext_sensitive_media_warning': True,
+            'include_ext_trusted_friends_metadata': True,
+            'send_error_codes': True,
+            'simple_quoted_tweet': True,
+            'count': count,
+            'requestContext': 'launch',
+            'ext' : 'mediaStats,highlightedLabel,voiceInfo,birdwatchPivot,superFollowMetadata,unmentionInfo,editControl,article'
+        }
         if cursor is not None:
             params['cursor'] = cursor
 

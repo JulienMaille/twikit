@@ -7,6 +7,7 @@ from ..constants import (
     COMMUNITY_NOTE_FEATURES,
     COMMUNITY_TWEETS_FEATURES,
     FEATURES,
+    TWEET_FEATURES,
     JOIN_COMMUNITY_FEATURES,
     LIST_FEATURES,
     NOTE_TWEET_FEATURES,
@@ -29,16 +30,16 @@ class Endpoint:
     def url(path):
         return 'https://x.com/i/api/graphql/' + path
 
-    SEARCH_TIMELINE = url('flaR-PUMshxFWZWPNpq4zA/SearchTimeline')
+    SEARCH_TIMELINE = url('H3x0obeAvb20fwqp7wBBjA/SearchTimeline')
     SIMILAR_POSTS = url('EToazR74i0rJyZYalfVEAQ/SimilarPosts')
     CREATE_NOTE_TWEET = url('iCUB42lIfXf9qPKctjE5rQ/CreateNoteTweet')
-    CREATE_TWEET = url('SiM_cAu83R0wnrpmKQQSEw/CreateTweet')
+    CREATE_TWEET = url('sQhC96QH-hw_8TjKE3kW3g/CreateTweet')
     CREATE_SCHEDULED_TWEET = url('LCVzRQGxOaGnOnYH01NQXg/CreateScheduledTweet')
     DELETE_TWEET = url('VaenaVgh5q5ih7kvyVjgtg/DeleteTweet')
     VIEWER_USER_QUERY = url('_nUEOKeLIbspZSgDmgbzxw/ViewerUserQuery')
     USER_BY_SCREEN_NAME = url('NimuplG1OB7Fd2btCLdBOw/UserByScreenName')
     USER_BY_REST_ID = url('tD8zKvQzwY3kdx5yz6YmOw/UserByRestId')
-    TWEET_DETAIL = url('U0HTv-bAWTBYylwEMT7x5A/TweetDetail')
+    TWEET_DETAIL = url('GBSfDNBdZPRdJCfYd3mR7Q/TweetDetail')
     TWEET_RESULT_BY_REST_ID = url('Xl5pC_lBk_gcO2ItU39DQw/TweetResultByRestId')
     FETCH_SCHEDULED_TWEETS = url('ITtjAzvlZni2wWXwf295Qg/FetchScheduledTweets')
     DELETE_SCHEDULED_TWEET = url('CTOVqej0JBXAZSwkp1US0g/DeleteScheduledTweet')
@@ -188,6 +189,7 @@ class GQLClient:
                 'in_reply_to_tweet_id': reply_to,
                 'exclude_reply_user_ids': []
             }
+            variables['disallowed_reply_options'] = None
 
         if limit_mode is not None:
             variables['conversation_control'] = {'mode': limit_mode}
@@ -218,7 +220,7 @@ class GQLClient:
             features = NOTE_TWEET_FEATURES
         else:
             endpoint = Endpoint.CREATE_TWEET
-            features = FEATURES
+            features = TWEET_FEATURES
         return await self.gql_post(endpoint, variables, features)
 
     async def create_scheduled_tweet(self, scheduled_at, text, media_ids) -> str:
@@ -279,18 +281,25 @@ class GQLClient:
     async def tweet_detail(self, tweet_id, cursor):
         variables = {
             'focalTweetId': tweet_id,
+            'referrer': 'tweet',
+            #'controller_data': '???',
             'with_rux_injections': False,
+            'rankingMode': 'Relevance',
             'includePromotedContent': True,
             'withCommunity': True,
             'withQuickPromoteEligibilityTweetFields': True,
             'withBirdwatchNotes': True,
-            'withVoice': True,
-            'withV2Timeline': True
+            'withVoice': True
         }
         if cursor is not None:
             variables['cursor'] = cursor
         params = {
-            'fieldToggles': {'withAuxiliaryUserLabels': False}
+            'fieldToggles': {
+                'withArticleRichContentState': True,
+                'withArticlePlainText': False,
+                'withGrokAnalyze': False,
+                'withDisallowedReplyControls': False
+            }
         }
         return await self.gql_get(Endpoint.TWEET_DETAIL, variables, FEATURES, extra_params=params)
 
