@@ -169,6 +169,8 @@ class Client:
         if not self.rate_limit_check(url):
             raise TooManyRequests("Rate limit exceeded, retry after " + str(self.rate_limits[url]["reset"] - time.time()) + " seconds")
 
+        await asyncio.sleep(random.uniform(12, 18))
+
         headers = kwargs.pop("headers", {})
         if self.is_oauth():
             # make sure url is in the form of api.twitter.com
@@ -193,6 +195,9 @@ class Client:
             guest_id = self.http.cookies.get('guest_id')
             cookies = {'guest_id': self.http.cookies.get('guest_id')} if self.http.cookies.get('guest_id') else {}
             self.set_cookies(cookies, clear_cookies=True)
+            now = time.time()
+            print(f"=={method}== {url} (+{now - (getattr(self, 'last_print', now)):.2f}s)")
+            self.last_print = now
             response = await self.http.request(method, url, headers=headers, **kwargs)
             self.set_cookies(cookies_backup, clear_cookies=True)
         else:
@@ -213,6 +218,9 @@ class Client:
             headers["X-Client-Transaction-Id"] = tid
 
             cookies_backup = self.get_cookies().copy()
+            now = time.time()
+            print(f"=={method}== {url} (+{now - (getattr(self, 'last_print', now)):.2f}s)")
+            self.last_print = now
             response = await self.http.request(method, url, headers=headers, **kwargs)
             self._remove_duplicate_ct0_cookie()
         try:
