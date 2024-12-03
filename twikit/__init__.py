@@ -7,7 +7,7 @@ https://github.com/d60/twikit
 A Python library for interacting with the Twitter API.
 """
 
-__version__ = '2.1.3'
+__version__ = '2.1.4'
 
 import asyncio
 import os
