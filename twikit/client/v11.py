@@ -45,6 +45,7 @@ class Endpoint:
     NOTIFICATIONS_ALL = 'https://x.com/i/api/2/notifications/all.json'
     NOTIFICATIONS_VERIFIED = 'https://x.com/i/api/2/notifications/verified.json'
     NOTIFICATIONS_MENTIONS = 'https://x.com/i/api/2/notifications/mentions.json'
+    BADGE_COUNT = 'https://x.com/i/api/2/badge_count/badge_count.json'
 
     LIVE_PIPELINE_EVENTS = 'https://api.x.com/live_pipeline/events'
     LIVE_PIPELINE_UPDATE_SUBSCRIPTIONS = 'https://api.x.com/1.1/live_pipeline/update_subscriptions'
@@ -370,6 +371,14 @@ class V11Client:
             params |= additional_request_params
         return await self.base.get(
             Endpoint.GUIDE,
+            params=params,
+            headers=self.base._base_headers
+        )
+
+    async def badge_count(self):
+        params = {'supports_ntab_urt': 1}
+        return await self.base.get(
+            Endpoint.BADGE_COUNT,
             params=params,
             headers=self.base._base_headers
         )

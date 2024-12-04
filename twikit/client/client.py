@@ -2873,6 +2873,19 @@ class Client:
 
         return results
 
+    async def get_badge_count(self) -> dict:
+        """
+        Retrieves badges
+        {
+        "ntab_unread_count":0,
+        "dm_unread_count":0,
+        "total_unread_count":0,
+        "is_from_urt":true
+        }
+        """
+        response, _ = await self.v11.badge_count()
+        return response
+
     async def get_available_locations(self) -> list[Location]:
         """
         Retrieves locations where trends can be retrieved.
