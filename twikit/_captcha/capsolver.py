@@ -5,15 +5,20 @@ from time import sleep
 import httpx
 
 from .base import CaptchaSolver
+from enum import Enum
+
+
+class Service(Enum):
+    Capsolver = "api.capsolver.com"
+    CapMonster = "api.capmonster.cloud"
+    AntiCaptcha = "api.anti-captcha.com"
+    TwoCaptcha = "api.2captcha.com"
 
 
 class Capsolver(CaptchaSolver):
     """
     You can automatically unlock the account by passing the `captcha_solver`
     argument when initialising the :class:`.Client`.
-
-    First, visit https://capsolver.com and obtain your Capsolver API key.
-    Next, pass the Capsolver instance to the client as shown in the example.
 
     .. code-block:: python
 
@@ -28,6 +33,8 @@ class Capsolver(CaptchaSolver):
     ----------
     api_key : :class:`str`
         Capsolver API key.
+    service : :class:`Service` default=Service.Capsolver
+        Service used for solve captcha
     max_attempts : :class:`int`, default=3
         The maximum number of attempts to solve the captcha.
     get_result_interval : :class:`float`, default=1.0
@@ -38,11 +45,13 @@ class Capsolver(CaptchaSolver):
     def __init__(
         self,
         api_key: str,
+        service: Service = Service.Capsolver,
         max_attempts: int = 3,
         get_result_interval: float = 1.0,
-        use_blob_data: bool = False
+        use_blob_data: bool = True
     ) -> None:
         self.api_key = api_key
+        self.api_url = service.value
         self.get_result_interval = get_result_interval
         self.max_attempts = max_attempts
         self.use_blob_data = use_blob_data
@@ -53,7 +62,7 @@ class Capsolver(CaptchaSolver):
             'task': task_data
         }
         response = httpx.post(
-            'https://api.capsolver.com/createTask',
+            f"https://{self.api_url}/createTask",
             json=data,
             headers={'content-type': 'application/json'}
         ).json()
@@ -65,7 +74,7 @@ class Capsolver(CaptchaSolver):
             'taskId': task_id
         }
         response = httpx.post(
-            'https://api.capsolver.com/getTaskResult',
+            f"https://{self.api_url}/getTaskResult",
             json=data,
             headers={'content-type': 'application/json'}
         ).json()

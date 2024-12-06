@@ -29,7 +29,7 @@ class CaptchaSolver:
 
     async def get_unlock_html(self) -> tuple[Response, UnlockHTML]:
         headers = {
-            'X-Twitter-Client-Language': 'en-US',
+            'X-Twitter-Client-Language': self.client.language,
             'User-Agent': self.client._user_agent,
             'Upgrade-Insecure-Requests': '1'
         }
@@ -54,14 +54,14 @@ class CaptchaSolver:
         data = {
             'authenticity_token': authenticity_token,
             'assignment_token': assignment_token,
-            'lang': 'en',
+            'lang': self.client.language.split('-')[0],
             'flow': '',
         }
         params = {}
         if verification_string:
             data['verification_string'] = verification_string
-            data['language_code'] = 'en'
-            params['lang'] = 'en'
+            data['language_code'] = self.client.language.split('-')[0]
+            params['lang'] = self.client.language.split('-')[0]
         if ui_metrics:
             data['ui_metrics'] = await self.client._ui_metrix()
         headers = {
