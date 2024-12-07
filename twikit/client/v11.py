@@ -40,11 +40,14 @@ class Endpoint:
     DM_INBOX = 'https://x.com/i/api/1.1/dm/inbox_initial_state.json'
     DM_CONVERSATION = 'https://x.com/i/api/1.1/dm/conversation/{}.json'
     CONVERSATION_UPDATE_NAME = 'https://x.com/i/api/1.1/dm/conversation/{}/update_name.json'
+    CONVERSATION_MARK_READ = 'https://x.com/i/api/1.1/dm/conversation/{}/mark_read.json'
+    CONVERSATION_UPDATE_LAST_SEEN = 'https://x.com/i/api/1.1/dm/update_last_seen_event_id'
 
     GUIDE = 'https://x.com/i/api/2/guide.json'
     NOTIFICATIONS_ALL = 'https://x.com/i/api/2/notifications/all.json'
     NOTIFICATIONS_VERIFIED = 'https://x.com/i/api/2/notifications/verified.json'
     NOTIFICATIONS_MENTIONS = 'https://x.com/i/api/2/notifications/mentions.json'
+    NOTIFICATIONS_LAST_SEEN = 'https://x.com/i/api/2/notifications/all/last_seen_cursor.json'
     BADGE_COUNT = 'https://x.com/i/api/2/badge_count/badge_count.json'
 
     LIVE_PIPELINE_EVENTS = 'https://api.x.com/live_pipeline/events'
@@ -525,6 +528,26 @@ class V11Client:
             headers=headers
         )
 
+    async def conversation_mark_read(self, conversation_id, event_id):
+        data = {'conversationId': conversation_id, 'last_read_event_id': event_id}
+        headers = self.base._base_headers
+        headers['Content-Type'] = 'application/x-www-form-urlencoded'
+        return await self.base.post(
+            Endpoint.CONVERSATION_MARK_READ.format(conversation_id),
+            data=data,
+            headers=headers
+        )
+
+    async def conversation_update_last_seen(self, event_id):
+        data = {'last_seen_event_id': event_id, 'trusted_last_seen_event_id': event_id}
+        headers = self.base._base_headers
+        headers['Content-Type'] = 'application/x-www-form-urlencoded'
+        return await self.base.post(
+            Endpoint.CONVERSATION_UPDATE_LAST_SEEN,
+            data=data,
+            headers=headers
+        )
+
     async def _notifications(self, endpoint, count, cursor):
         params = {
             'include_profile_interstitial_type': 1,
@@ -576,6 +599,16 @@ class V11Client:
 
     async def notifications_mentions(self, count, cursor):
         return await self._notifications(Endpoint.NOTIFICATIONS_MENTIONS, count, cursor)
+
+    async def notifications_last_seen(self, cursor):
+        data = {'cursor': cursor}
+        headers = self.base._base_headers
+        headers['Content-Type'] = 'application/x-www-form-urlencoded'
+        return await self.base.post(
+            Endpoint.NOTIFICATIONS_LAST_SEEN,
+            data=data,
+            headers=headers
+        )
 
     async def live_pipeline_update_subscriptions(self, session, subscribe, unsubscribe):
         data = {

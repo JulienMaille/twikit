@@ -3637,6 +3637,42 @@ class Client:
         _, response = await self.gql.add_participants_mutation(group_id, user_ids)
         return response
 
+    async def dm_mark_read(self, user_id: str, event_id: str) -> Response:
+        """Mark dm as seen
+
+        Parameters
+        ----------
+        user_id : :class:`str`
+            The ID of the user with whom the DM conversation
+            history will be marked as read.
+        event_id : :class:`str`
+            ID of the last event to be marked as seen.
+
+        Returns
+        -------
+        :class:`httpx.Response`
+            Response returned from twitter api.
+        """
+        _, response = await self.v11.conversation_mark_read(
+            f'{user_id}-{await self.user_id()}', event_id)
+        return response
+
+    async def dm_set_last_seen(self, event_id: str) -> Response:
+        """Set last seen DM
+
+        Parameters
+        ----------
+        event_id : :class:`str`
+            ID of the last event to be marked as seen.
+
+        Returns
+        -------
+        :class:`httpx.Response`
+            Response returned from twitter api.
+        """
+        _, response = await self.v11.conversation_update_last_seen(event_id)
+        return response
+
     async def change_group_name(self, group_id: str, name: str) -> Response:
         """Changes group name
 
@@ -4163,11 +4199,39 @@ class Client:
         else:
             next_cursor = None
 
+        cursor_top_entry = [
+            i for i in entries
+            if i['entryId'].startswith('cursor-top')
+        ]
+        if cursor_top_entry:
+            previous_cursor = find_dict(cursor_top_entry[0], 'value', find_one=True)[0]
+        else:
+            previous_cursor = None
+
         return Result(
             notifications,
             partial(self.get_notifications, type, count, next_cursor),
-            next_cursor
+            next_cursor,
+            partial(self.get_notifications, type, count, previous_cursor),
+            previous_cursor
         )
+
+
+    async def notifications_set_last_seen(self, cursor: str) -> Response:
+        """Mark notifications as seen
+
+        Parameters
+        ----------
+        cursor : :class:`str`
+            Cursor of the last DM to be marked as seen.
+
+        Returns
+        -------
+        :class:`httpx.Response`
+            Response returned from twitter api.
+        """
+        _, response = await self.v11.notifications_last_seen(cursor)
+        return response
 
     async def search_community(
         self, query: str, cursor: str | None = None
