@@ -81,18 +81,17 @@ class Capsolver(CaptchaSolver):
         return response
 
     def solve_funcaptcha(self, blob: str) -> dict:
-        if self.client.proxy is None:
-            captcha_type = 'FunCaptchaTaskProxyLess'
-        else:
-            captcha_type = 'FunCaptchaTask'
-
         task_data = {
-            'type': captcha_type,
             'websiteURL': 'https://iframe.arkoselabs.com',
             'websitePublicKey': self.CAPTCHA_SITE_KEY,
             'funcaptchaApiJSSubdomain': 'https://client-api.arkoselabs.com',
-            'proxy': self.client.proxy
         }
+        if self.client.proxy is None:
+            task_data['type'] = 'FunCaptchaTaskProxyLess'
+        else:
+            task_data['type'] = 'FunCaptchaTask'
+            task_data['proxy'] = self.client.proxy
+
         if self.use_blob_data:
             task_data['data'] = '{"blob":"%s"}' % blob
             task_data['userAgent'] = self.client._user_agent
