@@ -444,6 +444,20 @@ class V11Client:
         return await self._friendship_ids(user_id, screen_name, count, Endpoint.FRIENDS_IDS, cursor)
 
     async def dm_new(self, conversation_id, text, media_id, reply_to):
+        params = {
+            'ext': 'mediaColor,altText,mediaStats,highlightedLabel,voiceInfo,birdwatchPivot,superFollowMetadata,unmentionInfo,editControl,article',
+            'include_ext_alt_text': True,
+            'include_ext_limited_action_results': True,
+            'include_reply_count': 1,
+            'tweet_mode': 'extended',
+            'include_ext_views': True,
+            'include_groups': True,
+            'include_inbox_timelines': True,
+            'include_ext_media_color': True,
+            'supports_reactions': True,
+            'supports_edit': True
+        }
+
         data = {
             'cards_platform': 'Web-12',
             'conversation_id': conversation_id,
@@ -460,6 +474,7 @@ class V11Client:
 
         return await self.base.post(
             Endpoint.DM_NEW,
+            params=params,
             json=data,
             headers=self.base._base_headers
         )
