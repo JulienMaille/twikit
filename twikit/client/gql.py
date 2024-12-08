@@ -8,6 +8,7 @@ from ..constants import (
     COMMUNITY_TWEETS_FEATURES,
     FEATURES,
     TWEET_FEATURES,
+    LIST_LATEST_TWEETS_FEATURES,
     JOIN_COMMUNITY_FEATURES,
     LIST_FEATURES,
     NOTE_TWEET_FEATURES,
@@ -84,7 +85,7 @@ class Endpoint:
     LIST_REMOVE_MEMBER = url('cvDFkG5WjcXV0Qw5nfe1qQ/ListRemoveMember')
     LIST_MANAGEMENT_PACE_TIMELINE = url('47170qwZCt5aFo9cBwFoNA/ListsManagementPageTimeline')
     LIST_BY_REST_ID = url('9hbYpeVBMq8-yB8slayGWQ/ListByRestId')
-    LIST_LATEST_TWEETS_TIMELINE = url('HjsWc-nwwHKYwHenbHm-tw/ListLatestTweetsTimeline')
+    LIST_LATEST_TWEETS_TIMELINE = url('f-F9zCUgaJDQ9ubKsuntiw/ListLatestTweetsTimeline')
     LIST_MEMBERS = url('BQp2IEYkgxuSxqbTAr1e1g/ListMembers')
     LIST_SUBSCRIBERS = url('74wGEkaBxrdoXakWTWMxRQ/ListSubscribers')
     SEARCH_COMMUNITY = url('daVUkhfHn7-Z8llpYVKJSw/CommunitiesSearchQuery')
@@ -596,7 +597,7 @@ class GQLClient:
         variables = {'listId': list_id, 'count': count}
         if cursor is not None:
             variables['cursor'] = cursor
-        return await self.gql_get(Endpoint.LIST_LATEST_TWEETS_TIMELINE, variables, FEATURES)
+        return await self.gql_get(Endpoint.LIST_LATEST_TWEETS_TIMELINE, variables, LIST_LATEST_TWEETS_FEATURES)
 
     async def _list_users(self, endpoint, list_id, count, cursor):
         variables = {'listId': list_id, 'count': count}
