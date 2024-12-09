@@ -604,6 +604,7 @@ class Client:
                 print(find_dict(flow.response, 'secondary_text', find_one=True)[0]['text'])
                 totp_code = input('>>>')
             else:
+                print("Handling 2FA totp challenge")
                 totp_code = pyotp.TOTP(totp_secret).now()
 
             await flow.execute_task({
@@ -712,6 +713,7 @@ class Client:
                 print(find_dict(flow.response, 'secondary_text', find_one=True)[0]['text'])
                 totp_code = input('>>>')
             else:
+                print("Handling 2FA totp challenge")
                 totp_code = pyotp.TOTP(totp_secret).now()
 
             await flow.execute_task({
