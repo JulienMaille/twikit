@@ -13,10 +13,8 @@ from .interpolate import interpolate
 from .rotation import convert_rotation_to_matrix
 from .utils import float_to_hex, is_odd, base64_encode, handle_x_migration
 
-ON_DEMAND_FILE_REGEX = re.compile(
-    r"""['|\"]{1}ondemand\.s['|\"]{1}:\s*['|\"]{1}([\w]*)['|\"]{1}""", flags=(re.VERBOSE | re.MULTILINE))
-INDICES_REGEX = re.compile(
-    r"""(\(\w{1}\[(\d{1,2})\],\s*16\))+""", flags=(re.VERBOSE | re.MULTILINE))
+ON_DEMAND_FILE_REGEX = re.compile(r"""['|\"]{1}ondemand\.s['|\"]{1}:\s*['|\"]{1}([\w]*)['|\"]{1}""", flags=(re.VERBOSE | re.MULTILINE))
+INDICES_REGEX = re.compile(r"""(\(\w{1}\[(\d{1,2})\],\s*16\))+""", flags=(re.VERBOSE | re.MULTILINE))
 
 
 class ClientTransaction:
@@ -32,17 +30,14 @@ class ClientTransaction:
         home_page_response = await handle_x_migration(session, headers)
 
         self.home_page_response = self.validate_response(home_page_response)
-        self.DEFAULT_ROW_INDEX, self.DEFAULT_KEY_BYTES_INDICES = await self.get_indices(
-            self.home_page_response, session, headers)
+        self.DEFAULT_ROW_INDEX, self.DEFAULT_KEY_BYTES_INDICES = await self.get_indices(self.home_page_response, session, headers)
         self.key = self.get_key(response=self.home_page_response)
         self.key_bytes = self.get_key_bytes(key=self.key)
-        self.animation_key = self.get_animation_key(
-            key_bytes=self.key_bytes, response=self.home_page_response)
+        self.animation_key = self.get_animation_key(key_bytes=self.key_bytes, response=self.home_page_response)
 
     async def get_indices(self, home_page_response, session, headers):
         key_byte_indices = []
-        response = self.validate_response(
-            home_page_response) or self.home_page_response
+        response = self.validate_response(home_page_response) or self.home_page_response
         on_demand_file = ON_DEMAND_FILE_REGEX.search(str(response))
         if on_demand_file:
             on_demand_file_url = f"https://abs.twimg.com/responsive-web/client-web/ondemand.s.{on_demand_file.group(1)}a.js"
@@ -118,8 +113,7 @@ class ClientTransaction:
             if rounded < 0:
                 rounded = -rounded
             hex_value = float_to_hex(rounded)
-            str_arr.append(f"0{hex_value}".lower() if hex_value.startswith(
-                ".") else hex_value if hex_value else '0')
+            str_arr.append(f"0{hex_value}".lower() if hex_value.startswith(".") else hex_value if hex_value else '0')
         str_arr.extend(["0", "0"])
         animation_key = re.sub(r"[.-]", "", "".join(str_arr))
         return animation_key
@@ -140,23 +134,19 @@ class ClientTransaction:
         return animation_key
 
     def generate_transaction_id(self, method: str, path: str, response=None, key=None, animation_key=None, time_now=None):
-        time_now = time_now or math.floor(
-            (time.time() * 1000 - 1682924400 * 1000) / 1000)
+        time_now = time_now or math.floor((time.time() * 1000 - 1682924400 * 1000) / 1000)
         time_now_bytes = [(time_now >> (i * 8)) & 0xFF for i in range(4)]
         key = key or self.key or self.get_key(response)
         key_bytes = self.get_key_bytes(key)
-        animation_key = animation_key or self.animation_key or self.get_animation_key(
-            key_bytes, response)
+        animation_key = animation_key or self.animation_key or self.get_animation_key(key_bytes, response)
         # hash_val = hashlib.sha256(f"{method}!{path}!{time_now}bird{animation_key}".encode()).digest()
-        hash_val = hashlib.sha256(
-            f"{method}!{path}!{time_now}{self.DEFAULT_KEYWORD}{animation_key}".encode()).digest()
+        hash_val = hashlib.sha256(f"{method}!{path}!{time_now}{self.DEFAULT_KEYWORD}{animation_key}".encode()).digest()
         # hash_bytes = [int(hash_val[i]) for i in range(len(hash_val))]
         hash_bytes = list(hash_val)
         random_num = random.randint(0, 255)
         bytes_arr = [*key_bytes, *time_now_bytes, *
                      hash_bytes[:16], self.ADDITIONAL_RANDOM_NUMBER]
-        out = bytearray(
-            [random_num, *[item ^ random_num for item in bytes_arr]])
+        out = bytearray([random_num, *[item ^ random_num for item in bytes_arr]])
         return base64_encode(out).strip("=")
 
 

@@ -6,13 +6,12 @@ from typing import Union
 
 async def handle_x_migration(session, headers):
     home_page = None
-    migration_redirection_regex = re.compile(
-        r"""(http(?:s)?://(?:www\.)?(twitter|x){1}\.com(/x)?/migrate([/?])?tok=[a-zA-Z0-9%\-_]+)+""", re.VERBOSE)
+    migration_redirection_regex = re.compile(r"""(http(?:s)?://(?:www\.)?(twitter|x){1}\.com(/x)?/migrate([/?])?tok=[a-zA-Z0-9%\-_]+)+""", re.VERBOSE)
+    session.follow_redirects = True
     response = await session.request(method="GET", url="https://x.com", headers=headers)
     home_page = bs4.BeautifulSoup(response.content, 'lxml')
     migration_url = home_page.select_one("meta[http-equiv='refresh']")
-    migration_redirection_url = re.search(migration_redirection_regex, str(
-        migration_url)) or re.search(migration_redirection_regex, str(response.content))
+    migration_redirection_url = re.search(migration_redirection_regex, str(migration_url)) or re.search(migration_redirection_regex, str(response.content))
     if migration_redirection_url:
         response = await session.request(method="GET", url=migration_redirection_url.group(0), headers=headers)
         home_page = bs4.BeautifulSoup(response.content, 'lxml')
