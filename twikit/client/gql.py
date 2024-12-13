@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+from urllib.request import urlopen
+import json
 
 from ..constants import (
     BOOKMARK_FOLDER_TIMELINE_FEATURES,
@@ -104,6 +106,12 @@ class Endpoint:
 class GQLClient:
     def __init__(self, base: ClientType) -> None:
         self.base = base
+        with urlopen(
+            'https://raw.githubusercontent.com/fa0311/TwitterInternalAPIDocument/refs/heads/master/docs/json/API.json'
+        ) as f:
+            data = json.load(f)
+            for endpoint, value in data['graphql'].items():
+                setattr(Endpoint, endpoint, type('obj', (object,), {'url': value['url'], 'features': value['features']}))
 
     async def gql_get(
         self,
@@ -156,14 +164,14 @@ class GQLClient:
         }
         if cursor is not None:
             variables['cursor'] = cursor
-        return await self.gql_get(Endpoint.SEARCH_TIMELINE, variables, FEATURES)
+        return await self.gql_get(Endpoint.SearchTimeline.url, variables, Endpoint.SearchTimeline.features)
 
     async def similar_posts(self, tweet_id: str):
         variables = {'tweet_id': tweet_id}
         return await self.gql_get(
-            Endpoint.SIMILAR_POSTS,
+            Endpoint.SimilarPosts.url,
             variables,
-            SIMILAR_POSTS_FEATURES
+            Endpoint.SimilarPosts.features
         )
 
     async def create_tweet(
@@ -217,11 +225,11 @@ class GQLClient:
             }
 
         if is_note_tweet:
-            endpoint = Endpoint.CREATE_NOTE_TWEET
-            features = NOTE_TWEET_FEATURES
+            endpoint = Endpoint.CreateNoteTweet.url
+            features = Endpoint.CreateNoteTweet.features
         else:
-            endpoint = Endpoint.CREATE_TWEET
-            features = TWEET_FEATURES
+            endpoint = Endpoint.CreateTweet.url
+            features = Endpoint.CreateTweet.features
         return await self.gql_post(endpoint, variables, features)
 
     async def create_scheduled_tweet(self, scheduled_at, text, media_ids) -> str:
@@ -234,14 +242,14 @@ class GQLClient:
             },
             'execute_at': scheduled_at
         }
-        return await self.gql_post(Endpoint.CREATE_SCHEDULED_TWEET, variables)
+        return await self.gql_post(Endpoint.CreateScheduledTweet.url, variables)
 
     async def delete_tweet(self, tweet_id):
         variables = {
             'tweet_id': tweet_id,
             'dark_request': False
         }
-        return await self.gql_post(Endpoint.DELETE_TWEET, variables)
+        return await self.gql_post(Endpoint.DeleteTweet.url, variables)
 
     async def viewer_user_query(self):
         variables = {
@@ -270,14 +278,14 @@ class GQLClient:
         params = {
             'fieldToggles': {'withAuxiliaryUserLabels': False}
         }
-        return await self.gql_get(Endpoint.USER_BY_SCREEN_NAME, variables, USER_FEATURES, extra_params=params)
+        return await self.gql_get(Endpoint.UserByScreenName.url, variables, Endpoint.UserByScreenName.features, extra_params=params)
 
     async def user_by_rest_id(self, user_id):
         variables = {
             'userId': user_id,
             'withSafetyModeUserFields': True
         }
-        return await self.gql_get(Endpoint.USER_BY_REST_ID, variables, USER_FEATURES)
+        return await self.gql_get(Endpoint.UserByRestId.url, variables, Endpoint.UserByRestId.features)
 
     async def tweet_detail(self, tweet_id, cursor):
         variables = {
@@ -302,17 +310,17 @@ class GQLClient:
                 'withDisallowedReplyControls': False
             }
         }
-        return await self.gql_get(Endpoint.TWEET_DETAIL, variables, FEATURES, extra_params=params)
+        return await self.gql_get(Endpoint.TweetDetail.url, variables, Endpoint.TweetDetail.features, extra_params=params)
 
     async def fetch_scheduled_tweets(self):
         variables = {'ascending': True}
-        return await self.gql_get(Endpoint.FETCH_SCHEDULED_TWEETS, variables)
+        return await self.gql_get(Endpoint.FetchScheduledTweets.url, variables)
 
     async def delete_scheduled_tweet(self, tweet_id):
         variables = {'scheduled_tweet_id': tweet_id}
-        return await self.gql_post(Endpoint.DELETE_SCHEDULED_TWEET, variables)
+        return await self.gql_post(Endpoint.DeleteScheduledTweet.url, variables)
 
-    async def tweet_engagements(self, tweet_id, count, cursor, endpoint):
+    async def tweet_engagements(self, tweet_id, count, cursor, endpoint, features):
         variables = {
             'tweetId': tweet_id,
             'count': count,
@@ -320,19 +328,19 @@ class GQLClient:
         }
         if cursor is not None:
             variables['cursor'] = cursor
-        return await self.gql_get(endpoint, variables, FEATURES)
+        return await self.gql_get(endpoint, variables, features)
 
     async def retweeters(self, tweet_id, count, cursor):
-        return await self.tweet_engagements(tweet_id, count, cursor, Endpoint.RETWEETERS)
+        return await self.tweet_engagements(tweet_id, count, cursor, Endpoint.Retweeters.url, Endpoint.Retweeters.features)
 
     async def favoriters(self, tweet_id, count, cursor):
-        return await self.tweet_engagements(tweet_id, count, cursor, Endpoint.FAVORITERS)
+        return await self.tweet_engagements(tweet_id, count, cursor, Endpoint.Favoriters.url, Endpoint.Favoriters.features)
 
     async def bird_watch_one_note(self, note_id):
         variables = {'note_id': note_id}
-        return await self.gql_get(Endpoint.FETCH_COMMUNITY_NOTE, variables, COMMUNITY_NOTE_FEATURES)
+        return await self.gql_get(Endpoint.BirdwatchFetchOneNote.url, variables, Endpoint.BirdwatchFetchOneNote.features)
 
-    async def _get_user_tweets(self, user_id, count, cursor, endpoint):
+    async def _get_user_tweets(self, user_id, count, cursor, endpoint, features):
         variables = {
             'userId': user_id,
             'count': count,
@@ -343,19 +351,19 @@ class GQLClient:
         }
         if cursor is not None:
             variables['cursor'] = cursor
-        return await self.gql_get(endpoint, variables, FEATURES)
+        return await self.gql_get(endpoint, variables, features)
 
     async def user_tweets(self, user_id, count, cursor):
-        return await self._get_user_tweets(user_id, count, cursor, Endpoint.USER_TWEETS)
+        return await self._get_user_tweets(user_id, count, cursor, Endpoint.UserTweets.url, Endpoint.UserTweets.features)
 
     async def user_tweets_and_replies(self, user_id, count, cursor):
-        return await self._get_user_tweets(user_id, count, cursor, Endpoint.USER_TWEETS_AND_REPLIES)
+        return await self._get_user_tweets(user_id, count, cursor, Endpoint.UserTweetsAndReplies.url, Endpoint.UserTweetsAndReplies.features)
 
     async def user_media(self, user_id, count, cursor):
-        return await self._get_user_tweets(user_id, count, cursor, Endpoint.USER_MEDIA)
+        return await self._get_user_tweets(user_id, count, cursor, Endpoint.UserMedia.url, Endpoint.UserMedia.features)
 
     async def user_likes(self, user_id, count, cursor):
-        return await self._get_user_tweets(user_id, count, cursor, Endpoint.USER_LIKES)
+        return await self._get_user_tweets(user_id, count, cursor, Endpoint.Likes.url, Endpoint.Likes.features)
 
     async def user_highlights_tweets(self, user_id, count, cursor):
         variables = {
@@ -367,9 +375,9 @@ class GQLClient:
         if cursor is not None:
             variables['cursor'] = cursor
         return await self.gql_get(
-            Endpoint.USER_HIGHLIGHTS_TWEETS,
+            Endpoint.UserHighlightsTweets.url,
             variables,
-            USER_HIGHLIGHTS_TWEETS_FEATURES,
+            Endpoint.UserHighlightsTweets.features,
             self.base._base_headers
         )
 
@@ -384,7 +392,7 @@ class GQLClient:
         }
         if cursor is not None:
             variables['cursor'] = cursor
-        return await self.gql_post(Endpoint.HOME_TIMELINE, variables, FEATURES)
+        return await self.gql_post(Endpoint.HomeTimeline.url, variables, Endpoint.HomeTimeline.features)
 
     async def home_latest_timeline(self, count, seen_tweet_ids, cursor):
         variables = {
@@ -397,38 +405,38 @@ class GQLClient:
         }
         if cursor is not None:
             variables['cursor'] = cursor
-        return await self.gql_post(Endpoint.HOME_LATEST_TIMELINE, variables, FEATURES)
+        return await self.gql_post(Endpoint.HomeLatestTimeline.url, variables, Endpoint.HomeLatestTimeline.features)
 
     async def favorite_tweet(self, tweet_id):
         variables = {'tweet_id': tweet_id}
-        return await self.gql_post(Endpoint.FAVORITE_TWEET, variables)
+        return await self.gql_post(Endpoint.FavoriteTweet.url, variables)
 
     async def unfavorite_tweet(self, tweet_id):
         variables = {'tweet_id': tweet_id}
-        return await self.gql_post(Endpoint.UNFAVORITE_TWEET, variables)
+        return await self.gql_post(Endpoint.UnfavoriteTweet.url, variables)
 
     async def retweet(self, tweet_id):
         variables = {'tweet_id': tweet_id, 'dark_request': False}
-        return await self.gql_post(Endpoint.CREATE_RETWEET, variables)
+        return await self.gql_post(Endpoint.CreateRetweet.url, variables)
 
     async def delete_retweet(self, tweet_id):
         variables = {'source_tweet_id': tweet_id,'dark_request': False}
-        return await self.gql_post(Endpoint.DELETE_RETWEET, variables)
+        return await self.gql_post(Endpoint.DeleteRetweet.url, variables)
 
     async def create_bookmark(self, tweet_id):
         variables = {'tweet_id': tweet_id}
-        return await self.gql_post(Endpoint.CREATE_BOOKMARK, variables)
+        return await self.gql_post(Endpoint.CreateBookmark.url, variables)
 
     async def bookmark_tweet_to_folder(self, tweet_id, folder_id):
         variables = {
             'tweet_id': tweet_id,
             'bookmark_collection_id': folder_id
         }
-        return await self.gql_post(Endpoint.BOOKMARK_TO_FOLDER, variables)
+        return await self.gql_post(Endpoint.bookmarkTweetToFolder.url, variables)
 
     async def delete_bookmark(self, tweet_id):
         variables = {'tweet_id': tweet_id}
-        return await self.gql_post(Endpoint.DELETE_BOOKMARK, variables)
+        return await self.gql_post(Endpoint.DeleteBookmark.url, variables)
 
     async def bookmarks(self, count, cursor):
         variables = {
@@ -486,7 +494,7 @@ class GQLClient:
         variables = {'name': name}
         return await self.gql_post(Endpoint.CREATE_BOOKMARK_FOLDER, variables)
 
-    async def _friendships(self, user_id, count, endpoint, cursor):
+    async def _friendships(self, user_id, count, endpoint, cursor, features):
         variables = {
             'userId': user_id,
             'count': count,
@@ -494,22 +502,22 @@ class GQLClient:
         }
         if cursor is not None:
             variables['cursor'] = cursor
-        return await self.gql_get(endpoint, variables, FEATURES)
+        return await self.gql_get(endpoint, variables, features)
 
     async def followers(self, user_id, count, cursor):
-        return await self._friendships(user_id, count, Endpoint.FOLLOWERS, cursor)
+        return await self._friendships(user_id, count, Endpoint.Followers.url, cursor, Endpoint.Followers.features)
 
     async def blue_verified_followers(self, user_id, count, cursor):
-        return await self._friendships(user_id, count, Endpoint.BLUE_VERIFIED_FOLLOWERS, cursor)
+        return await self._friendships(user_id, count, Endpoint.BlueVerifiedFollowers.url, cursor, Endpoint.BlueVerifiedFollowers.features)
 
     async def followers_you_know(self, user_id, count, cursor):
-        return await self._friendships(user_id, count, Endpoint.FOLLOWERS_YOU_KNOW, cursor)
+        return await self._friendships(user_id, count, Endpoint.FollowersYouKnow.url, cursor, Endpoint.FollowersYouKnow.features)
 
     async def following(self, user_id, count, cursor):
-        return await self._friendships(user_id, count, Endpoint.FOLLOWING, cursor)
+        return await self._friendships(user_id, count, Endpoint.Following.url, cursor, Endpoint.Following.features)
 
     async def user_creator_subscriptions(self, user_id, count, cursor):
-        return await self._friendships(user_id, count, Endpoint.USER_CREATOR_SUBSCRIPTIONS, cursor)
+        return await self._friendships(user_id, count, Endpoint.UserCreatorSubscriptions.url, cursor, Endpoint.UserCreatorSubscriptions.features)
 
     async def user_dm_reaction_mutation_add_mutation(self, message_id, conversation_id, emoji):
         variables = {
@@ -597,19 +605,19 @@ class GQLClient:
         variables = {'listId': list_id, 'count': count}
         if cursor is not None:
             variables['cursor'] = cursor
-        return await self.gql_get(Endpoint.LIST_LATEST_TWEETS_TIMELINE, variables, LIST_LATEST_TWEETS_FEATURES)
+        return await self.gql_get(Endpoint.ListLatestTweetsTimeline.url, variables, Endpoint.ListLatestTweetsTimeline.features)
 
-    async def _list_users(self, endpoint, list_id, count, cursor):
+    async def _list_users(self, endpoint, list_id, count, cursor, features):
         variables = {'listId': list_id, 'count': count}
         if cursor is not None:
             variables['cursor'] = cursor
-        return await self.gql_get(endpoint, variables, FEATURES)
+        return await self.gql_get(endpoint, variables, features)
 
     async def list_members(self, list_id, count, cursor):
-        return await self._list_users(Endpoint.LIST_MEMBERS, list_id, count, cursor)
+        return await self._list_users(Endpoint.ListMembers.url, list_id, count, cursor,Endpoint.ListMembers.features)
 
     async def list_subscribers(self, list_id, count, cursor):
-        return await self._list_users(Endpoint.LIST_SUBSCRIBERS, list_id, count, cursor)
+        return await self._list_users(Endpoint.ListSubscribers.url, list_id, count, cursor, Endpoint.ListSubscribers.features)
 
     async def search_community(self, query, cursor):
         variables = {'query': query}
@@ -718,5 +726,5 @@ class GQLClient:
             }
         }
         return await self.gql_get(
-            Endpoint.TWEET_RESULT_BY_REST_ID, variables, TWEET_RESULT_BY_REST_ID_FEATURES, extra_params=params
+            Endpoint.TweetResultByRestId.url, variables, Endpoint.TweetResultByRestId.features, extra_params=params
         )
