@@ -17,6 +17,7 @@ class UnlockHTML(NamedTuple):
     start_button: bool
     finish_button: bool
     delete_button: bool
+    email_button: bool
     blob: str
 
 
@@ -49,7 +50,8 @@ class CaptchaSolver:
         authenticity_token: str,
         assignment_token: str,
         verification_string: str = None,
-        ui_metrics: bool = False
+        ui_metrics: bool = False,
+        mail_token: str = None
     ) -> tuple[Response, UnlockHTML]:
         data = {
             'authenticity_token': authenticity_token,
@@ -62,6 +64,8 @@ class CaptchaSolver:
             data['verification_string'] = verification_string
             data['language_code'] = self.client.language.split('-')[0]
             params['lang'] = self.client.language.split('-')[0]
+        if mail_token:
+            data['token'] = mail_token
         if ui_metrics:
             data['ui_metrics'] = await self.client._ui_metrix()
         headers = {
@@ -92,9 +96,18 @@ def parse_unlock_html(html: str) -> UnlockHTML:
 
     verification_string = soup.find('input', id='verification_string')
     needs_unlock = bool(verification_string)
-    start_button = bool(soup.find('input', value='Start'))
-    finish_button = bool(soup.find('input', value='Continue to X'))
-    delete_button = bool(soup.find('input', value='Delete'))
+
+    gui_lang = soup.find('input', {'name': 'lang'}).attrs['value']
+    if gui_lang == 'en':
+        start_button = bool(soup.find('input', value='Start'))
+        finish_button = bool(soup.find('input', value='Continue to X'))
+        delete_button = bool(soup.find('input', value='Delete'))
+        email_button = bool(soup.find('input', value='Send email'))
+    elif gui_lang == 'fr':
+        start_button = bool(soup.find('input', value='Commencer'))
+        finish_button = bool(soup.find('input', value='Continuer vers X'))
+        delete_button = bool(soup.find('input', value='Supprimer'))
+        email_button = bool(soup.find('input', value='Envoyer un email'))
 
     iframe = soup.find(id='arkose_iframe')
     blob = re.findall(r'data=(.+)', iframe['src'])[0] if iframe else None
@@ -106,5 +119,6 @@ def parse_unlock_html(html: str) -> UnlockHTML:
         start_button,
         finish_button,
         delete_button,
+        email_button,
         blob
     )

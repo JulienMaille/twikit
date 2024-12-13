@@ -778,6 +778,26 @@ class Client:
                 ui_metrics=True
             )
 
+        # Sometimes we need to handle an email verification first
+        if html.email_button:
+            response, html = await self.captcha_solver.confirm_unlock(
+                html.authenticity_token,
+                html.assignment_token
+            )
+
+            if self.email_client:
+                print("Waiting for the email auth challenge")
+                code = await self.email_client.get_email_code()
+            else:
+                print("Enter the verification code")
+                code = input('>>> ')
+
+            response, html = await self.captcha_solver.confirm_unlock(
+                html.authenticity_token,
+                html.assignment_token,
+                email_token=code
+            )
+
         cookies_backup = self.get_cookies().copy()
         max_unlock_attempts = self.captcha_solver.max_attempts
         attempt = 0
