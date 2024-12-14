@@ -567,7 +567,7 @@ class Client:
         if flow.task_id == 'LoginAcid':
             if self.email_client:
                 print("Waiting for the email auth challenge")
-                code = await self.email_client.get_email_code()
+                code, _ = await self.email_client.get_email_code()
             else:
                 print(find_dict(flow.response, 'secondary_text', find_one=True)[0]['text'])
                 code = input('>>> ')
@@ -694,7 +694,7 @@ class Client:
         if flow.task_id == 'LoginAcid':
             if self.email_client:
                 print("Waiting for the email auth challenge")
-                code = await self.email_client.get_email_code()
+                code, _ = await self.email_client.get_email_code()
             else:
                 print(find_dict(flow.response, 'secondary_text', find_one=True)[0]['text'])
                 code = input('>>> ')
@@ -787,7 +787,7 @@ class Client:
 
             if self.email_client:
                 print("Waiting for the email auth challenge")
-                code = await self.email_client.get_email_code()
+                code, _ = await self.email_client.get_email_code()
             else:
                 print("Enter the verification code")
                 code = input('>>> ')
