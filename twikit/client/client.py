@@ -201,13 +201,25 @@ class Client:
             if not self.client_transaction.home_page_response:
                 # init for 'X-Client-Transaction-Id'
                 cookies_backup = self.get_cookies().copy()
+                ct_headers = {
+                    "Accept-Language": f"{self.language},{self.language.split('-')[0]};q=0.9",
+                    "Cache-Control": "no-cache",
+                    "Referer": "https://x.com",
+                    "User-Agent": self._user_agent
+                }
+
                 self.http.cookies.clear()
-                await self.client_transaction.init(self.http, headers)
+                try:
+                    await self.client_transaction.init(self.http, ct_headers)
+                except Exception as e:
+                    self.client_transaction.home_page_response = None
+                    print("Error: {}".format(e))
                 self.set_cookies(cookies_backup, clear_cookies=True)
 
             # forge 'X-Client-Transaction-Id' header
-            tid = self.client_transaction.generate_transaction_id(method=method, path=urlparse(url).path)
-            headers["X-Client-Transaction-Id"] = tid
+            if self.client_transaction.home_page_response:
+                tid = self.client_transaction.generate_transaction_id(method=method, path=urlparse(url).path)
+                headers["X-Client-Transaction-Id"] = tid
 
             cookies_backup = self.get_cookies().copy()
             response = await self.http.request(method, url, headers=headers, **kwargs)
