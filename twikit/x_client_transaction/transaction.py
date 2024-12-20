@@ -42,12 +42,11 @@ class ClientTransaction:
         if on_demand_file:
             on_demand_file_url = f"https://abs.twimg.com/responsive-web/client-web/ondemand.s.{on_demand_file.group(1)}a.js"
             on_demand_file_response = await session.request(method="GET", url=on_demand_file_url, headers=headers)
-            key_byte_indices_match = INDICES_REGEX.finditer(
-                str(on_demand_file_response.text))
+            key_byte_indices_match = INDICES_REGEX.finditer(str(on_demand_file_response.text))
             for item in key_byte_indices_match:
                 key_byte_indices.append(item.group(2))
         if not key_byte_indices:
-            raise Exception("Couldn't get KEY_BYTE indices")
+            raise Exception(f"Couldn't get KEY_BYTE indices {on_demand_file}")
         key_byte_indices = list(map(int, key_byte_indices))
         return key_byte_indices[0], key_byte_indices[1:]
 
@@ -148,7 +147,3 @@ class ClientTransaction:
                      hash_bytes[:16], self.ADDITIONAL_RANDOM_NUMBER]
         out = bytearray([random_num, *[item ^ random_num for item in bytes_arr]])
         return base64_encode(out).strip("=")
-
-
-if __name__ == "__main__":
-    pass

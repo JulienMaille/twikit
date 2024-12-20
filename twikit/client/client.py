@@ -10,6 +10,7 @@ from typing import Any, AsyncGenerator, Literal
 import time
 import random
 import uuid
+import base64
 
 import filetype
 import pyotp
@@ -201,13 +202,38 @@ class Client:
             if not self.client_transaction.home_page_response:
                 # init for 'X-Client-Transaction-Id'
                 cookies_backup = self.get_cookies().copy()
-                self.http.cookies.clear()
-                await self.client_transaction.init(self.http, headers)
+                ct_headers = {
+                    "Accept-Language": f"{self.language},{self.language.split('-')[0]};q=0.9",
+                    "Host": "x.com",
+                    "accept": "text/html,application/xhtml+xml,application/xml",
+                    "Cache-Control": "max-age=0",
+                    "Referer": "https://x.com",
+                    "User-Agent": self._user_agent,
+                    "Connection": "keep-alive",
+                    "dnt": "1",
+                    "priority": "u=0, i",
+                    "Upgrade-Insecure-Requests": "1"
+                }
+                try:
+                    await self.client_transaction.init(self.http, ct_headers)
+                except Exception as e:
+                    print("Retrying with default headers after error: {}".format(e))
+                    self.client_transaction.home_page_response = None
+                    self.http.cookies.clear()
+                    try:
+                        await self.client_transaction.init(self.http, headers)
+                    except Exception as e2:
+                        print("Failed again after retrying with default headers: {}".format(e2))
+                        self.client_transaction.home_page_response = None
                 self.set_cookies(cookies_backup, clear_cookies=True)
 
             # forge 'X-Client-Transaction-Id' header
-            tid = self.client_transaction.generate_transaction_id(method=method, path=urlparse(url).path)
-            headers["X-Client-Transaction-Id"] = tid
+            if self.client_transaction.home_page_response:
+                tid = self.client_transaction.generate_transaction_id(method=method, path=urlparse(url).path)
+            else:
+                random_data = ''.join(random.choices('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789', k=70))
+                tid = base64.urlsafe_b64encode(random_data.encode()).decode()
+                headers["X-Client-Transaction-Id"] = tid
 
             cookies_backup = self.get_cookies().copy()
             response = await self.http.request(method, url, headers=headers, **kwargs)
@@ -774,12 +800,13 @@ class Client:
             )
 
         # Sometimes we need to handle an email verification first
-        if html.email_button:
+        if html.send_email_button:
             response, html = await self.captcha_solver.confirm_unlock(
                 html.authenticity_token,
                 html.assignment_token
             )
 
+        if html.verify_email_button:
             if self.email_client:
                 print("Waiting for the email auth challenge")
                 code, _ = await self.email_client.get_email_code()
@@ -799,11 +826,14 @@ class Client:
         while attempt < max_unlock_attempts:
             attempt += 1
 
-            if html.authenticity_token is None:
+            if html.authenticity_token is None or html.blob is None:
                 response, html = await self.captcha_solver.get_unlock_html()
 
-            result = self.captcha_solver.solve_funcaptcha(html.blob)
-            if result['errorId'] == 1:
+            if html.blob:
+                result = self.captcha_solver.solve_funcaptcha(html.blob)
+            else:
+                raise Exception("Empty blob, can't solve")
+            if result.get('errorId') == 1:
                 continue
 
             self.set_cookies(cookies_backup, clear_cookies=True)

@@ -1,12 +1,9 @@
 from __future__ import annotations
-
 from time import sleep
-
-import httpx
-
 from .base import CaptchaSolver
 from enum import Enum
-
+import httpx
+import json
 
 class Service(Enum):
     Capsolver = "api.capsolver.com"
@@ -47,7 +44,7 @@ class Capsolver(CaptchaSolver):
         api_key: str,
         service: Service = Service.Capsolver,
         max_attempts: int = 3,
-        get_result_interval: float = 1.0,
+        get_result_interval: float = 2.0,
         use_blob_data: bool = True
     ) -> None:
         self.api_key = api_key
@@ -87,18 +84,23 @@ class Capsolver(CaptchaSolver):
             'funcaptchaApiJSSubdomain': 'https://client-api.arkoselabs.com',
         }
         if self.client.proxy is None:
-            task_data['type'] = 'FunCaptchaTaskProxyLess'
+            task_data['type'] = 'FunCaptchaTaskProxyless'
         else:
             task_data['type'] = 'FunCaptchaTask'
             task_data['proxy'] = self.client.proxy
 
         if self.use_blob_data:
-            task_data['data'] = '{"blob":"%s"}' % blob
-            task_data['userAgent'] = self.client._user_agent
+            task_data['data'] = json.dumps({"blob": blob})
+        
+        task_data['userAgent'] = self.client._user_agent
+        print(f"Creating task with use_blob_data: {self.use_blob_data} 'data': {task_data.get('data')}")
         task = self.create_task(task_data)
         print(f"Task created with taskId: {task.get('taskId')} returned errorId: {task.get('errorId')}")
         while True:
             sleep(self.get_result_interval)
             result = self.get_task_result(task['taskId'])
-            if result['status'] in ('ready', 'failed'):
+            if 'errorCode' in result:
+                print(f"Error code: {result['errorCode']} {result.get('errorDescription')}")
+                return None
+            if result.get('status') in ('ready', 'failed'):
                 return result
