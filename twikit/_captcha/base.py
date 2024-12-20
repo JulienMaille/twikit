@@ -51,7 +51,7 @@ class CaptchaSolver:
         assignment_token: str,
         verification_string: str = None,
         ui_metrics: bool = False,
-        mail_token: str = None
+        email_token: str = None
     ) -> tuple[Response, UnlockHTML]:
         data = {
             'authenticity_token': authenticity_token,
@@ -64,8 +64,8 @@ class CaptchaSolver:
             data['verification_string'] = verification_string
             data['language_code'] = self.client.language.split('-')[0]
             params['lang'] = self.client.language.split('-')[0]
-        if mail_token:
-            data['token'] = mail_token
+        if email_token:
+            data['token'] = email_token
         if ui_metrics:
             data['ui_metrics'] = await self.client._ui_metrix()
         headers = {
