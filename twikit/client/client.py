@@ -204,14 +204,9 @@ class Client:
                 cookies_backup = self.get_cookies().copy()
                 ct_headers = {
                     "Accept-Language": f"{self.language},{self.language.split('-')[0]};q=0.9",
-                    "Host": "x.com",
-                    "accept": "text/html,application/xhtml+xml,application/xml",
-                    "Cache-Control": "max-age=0",
+                    "Cache-Control": "no-cache",
                     "Referer": "https://x.com",
                     "User-Agent": self._user_agent,
-                    "Connection": "keep-alive",
-                    "dnt": "1",
-                    "priority": "u=0, i",
                     "Upgrade-Insecure-Requests": "1"
                 }
                 try:
@@ -252,6 +247,7 @@ class Client:
 
             if error_code == 326:
                 # Account unlocking
+                print(f"Arkose challenge when accessing {url}")
                 if self.captcha_solver is None:
                     raise AccountLocked(
                         'Your account is locked. Visit '

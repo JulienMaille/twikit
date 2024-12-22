@@ -93,7 +93,6 @@ class Capsolver(CaptchaSolver):
             task_data['data'] = json.dumps({"blob": blob})
         
         task_data['userAgent'] = self.client._user_agent
-        print(f"Creating task with use_blob_data: {self.use_blob_data} 'data': {task_data.get('data')}")
         task = self.create_task(task_data)
         print(f"Task created with taskId: {task.get('taskId')} returned errorId: {task.get('errorId')}")
         while True:

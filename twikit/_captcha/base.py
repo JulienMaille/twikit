@@ -70,6 +70,7 @@ class CaptchaSolver:
         if ui_metrics:
             data['ui_metrics'] = await self.client._ui_metrix()
         headers = {
+            'User-Agent': self.client._user_agent,
             'Content-Type': 'application/x-www-form-urlencoded',
             'Upgrade-Insecure-Requests': '1',
             'Referer': self.CAPTCHA_URL
