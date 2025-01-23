@@ -102,8 +102,10 @@ class V11Client:
         headers = self.base._base_headers | {
             'x-guest-token': guest_token
         }
-        headers.pop('X-Twitter-Active-User')
-        headers.pop('X-Twitter-Auth-Type')
+        if 'X-Twitter-Active-User' in headers:
+            headers.pop('X-Twitter-Active-User')
+        if 'X-Twitter-Auth-Type' in headers:
+            headers.pop('X-Twitter-Auth-Type')
         return await self.base.post(
             Endpoint.ONBOARDING_SSO_INIT,
             json={'provider': provider},

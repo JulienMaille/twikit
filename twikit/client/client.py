@@ -375,18 +375,22 @@ class Client:
             headers = {
                 'Authorization': f'Bearer {self._token}',
                 'Accept': '*/*',
+                'Accept-Encoding': 'gzip, deflate, br',
                 'Content-Type': 'application/json',
-                'X-Twitter-Auth-Type': 'OAuth2Session',
-                'X-Twitter-Active-User': 'yes',
-                'Referer': 'https://x.com/',
+                'Connection': 'keep-alive',
                 'User-Agent': self._user_agent,
                 'Origin': 'https://x.com/',
+                'Referer': 'https://x.com/',
                 'Priority': 'u=1, i',
                 #'sec-ch-ua': f'"Chromium";v="{ua}", "Not;A=Brand";v="24", "Google Chrome";v="{ua}"',
                 #'sec-ch-ua-mobile': '?0',
                 #'sec-fetch-dest': 'empty',
                 #'sec-fetch-mode': 'cors',
             }
+
+            if self.http.cookies.get('ct0'):
+                headers['X-Twitter-Auth-Type'] = 'OAuth2Session'
+                headers['X-Twitter-Active-User'] = 'yes'
 
             if self.language is not None:
                 headers['Accept-Language'] = f"{self.language},{self.language.split('-')[0]};q=0.9"
@@ -4762,3 +4766,87 @@ class Client:
     async def _get_user_state(self) -> Literal['normal', 'bounced', 'suspended']:
         response, _ = await self.v11.user_state()
         return response['userState']
+
+    async def update_profile(
+        self, 
+        name: str | None = None, 
+        url: str | None = None, 
+        location: str | None = None, 
+        description: str | None = None
+    ) -> Response:
+        """
+        Updates the authenticated user's profile information.
+
+        Parameters
+        ----------
+        name : :class:`str` | None, default=None
+            The new name for the profile. If None, the name will not be changed.
+        url : :class:`str` | None, default=None
+            The new URL for the profile. If None, the URL will not be changed.
+        location : :class:`str` | None, default=None
+            The new location for the profile. If None, the location will not be changed.
+        description : :class:`str` | None, default=None
+            The new description (bio) for the profile. If None, the description will not be changed.
+
+        Returns
+        -------
+        :class:`User`
+            The updated User object representing the authenticated user's profile.
+
+        Examples
+        --------
+        >>> updated_user = await client.update_profile(
+        ...     name="New Name",
+        ...     description="New bio description"
+        ... )
+        >>> print(updated_user)
+        <User id="...">
+        """
+        _, response = await self.v11.update_profile(name, url, location, description)
+        return response
+    
+    async def update_profile_image(self, image_base64: str) -> Response:
+        """
+        Updates the authenticated user's profile image.
+
+        Parameters
+        ----------
+        image_base64 : str
+            The base64-encoded image data for the new profile image.
+
+        Returns
+        -------
+        httpx.Response
+            The response object from the API request.
+
+        Examples
+        --------
+        >>> with open('new_profile_pic.jpg', 'rb') as image_file:
+        ...     image_base64 = base64.b64encode(image_file.read()).decode('utf-8')
+        >>> response = await client.update_profile_image(image_base64)
+        """
+        _, response = await self.v11.update_profile_image(image_base64)
+        return response
+    
+    async def update_profile_banner(self, image_base64: str) -> Response:
+        """
+        Updates the authenticated user's profile banner image.
+
+        Parameters
+        ----------
+        image_base64 : str
+            The base64-encoded image data for the new profile banner image.
+
+        Returns
+        -------
+        httpx.Response
+            The response object from the API request.
+
+        Examples
+        --------
+        >>> with open('new_banner.jpg', 'rb') as image_file:
+        ...     image_base64 = base64.b64encode(image_file.read()).decode('utf-8')
+        >>> response = await client.update_profile_banner(image_base64)
+        """
+        _, response = await self.v11.update_profile_banner(image_base64)
+        return response
