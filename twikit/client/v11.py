@@ -16,6 +16,9 @@ class Endpoint:
     ACCOUNT_LOGOUT = 'https://api.x.com/1.1/account/logout.json'
     ONBOARDING_TASK = 'https://api.x.com/1.1/onboarding/task.json'
     SETTINGS = 'https://api.x.com/1.1/account/settings.json'
+    UPDATE_PROFILE = 'https://api.x.com/1.1/account/update_profile.json'
+    UPDATE_PROFILE_IMAGE = 'https://api.x.com/1.1/account/update_profile_image.json'
+    UPDATE_PROFILE_BANNER = 'https://api.x.com/1.1/account/update_profile_banner.json'
     UPLOAD_MEDIA = 'https://upload.x.com/i/media/upload.json'
     UPLOAD_MEDIA_2 = 'https://upload.x.com/i/media/upload2.json'
     CREATE_MEDIA_METADATA = 'https://api.x.com/1.1/media/metadata/create.json'
@@ -642,5 +645,45 @@ class V11Client:
     async def user_state(self):
         return await self.base.get(
             Endpoint.USER_STATE,
+            headers=self.base._base_headers
+        )
+        
+    async def update_profile(self, name, url, location, description):
+        params = {}
+        if name is not None:
+            params['name'] = name
+        if url is not None:
+            params['url'] = url
+        if location is not None:
+            params['location'] = location
+        if description is not None:
+            params['description'] = description
+
+        return await self.base.post(
+            Endpoint.UPDATE_PROFILE,
+            params=params,
+            headers=self.base._base_headers
+        )
+        
+    async def update_profile_image(self, image_base64):
+        params = {
+            'image': image_base64
+        }
+        
+        return await self.base.post(
+            Endpoint.UPDATE_PROFILE_IMAGE,
+            params=params,
+            headers=self.base._base_headers
+        )
+        
+    async def update_profile_banner(self, image_base64):
+        params = {
+            'banner': image_base64
+        }
+        
+        return await self.base.post(
+            Endpoint.UPDATE_PROFILE_BANNER,
+            params=params,
+            data=params,
             headers=self.base._base_headers
         )
