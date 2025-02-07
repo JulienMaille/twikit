@@ -481,7 +481,8 @@ class Client:
         auth_info_1: str,
         auth_info_2: str | None = None,
         password: str,
-        totp_secret: str | None = None
+        totp_secret: str | None = None,
+        enable_ui_metrics: bool = True
     ) -> dict:
         self.http.cookies.clear()
         guest_token = await self._get_guest_token()
