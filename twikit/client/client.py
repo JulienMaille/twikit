@@ -11,6 +11,7 @@ import time
 import random
 import uuid
 import base64
+import os
 
 import filetype
 import pyotp
@@ -49,6 +50,7 @@ from ..notification import Notification
 from ..streaming import Payload, StreamingSession, _payload_from_data
 from ..trend import Location, PlaceTrend, PlaceTrends, Trend
 from ..tweet import CommunityNote, Poll, ScheduledTweet, Tweet, tweet_from_data
+from ..ui_metrics import solve_ui_metrics
 from ..user import User
 from ..utils import (
     Flow,
@@ -60,7 +62,6 @@ from ..utils import (
     httpx_transport_to_url
 )
 from ..x_client_transaction import ClientTransaction
-from ..tools.ui_metrics import solve_ui_metrics
 from ..tools.email_client import EmailClient
 from ..tools.twitter_auth import get_oauth_authorization
 from .gql import GQLClient
@@ -409,9 +410,9 @@ class Client:
         guest_token = response['guest_token']
         return guest_token
 
-    async def _ui_metrix(self) -> str:
-        js, _ = await self.get(f'https://twitter.com/i/js_inst?c_name=ui_metrics') # keep twitter.com here
-        return solve_ui_metrics(js)
+    async def _ui_metrics(self) -> str:
+        response, _ = await self.get(f'https://twitter.com/i/js_inst?c_name=ui_metrics') # keep twitter.com here
+        return response
 
     async def login(
         self,
@@ -419,7 +420,9 @@ class Client:
         auth_info_1: str,
         auth_info_2: str | None = None,
         password: str,
-        totp_secret: str | None = None
+        totp_secret: str | None = None,
+        cookies_file: str | None = None,
+        enable_ui_metrics: bool = True
     ) -> dict:
         """
         Logs into the account using the specified login information.
@@ -440,9 +443,16 @@ class Client:
             It can be a username, email address, or phone number.
         password : :class:`str`
             The password associated with the account.
-        totp_secret : :class:`str`
+        totp_secret : :class:`str`, default=None
             The TOTP (Time-Based One-Time Password) secret key used for
             two-factor authentication (2FA).
+        cookies_file : :class:`str`, default=None
+            The file path used for storing and loading cookies.
+            If the specified file exists, cookies will be loaded from it, potentially bypassing the login process.
+            After a successful login, cookies will be saved to this file for future use.
+        enable_ui_metrics : :class:`bool`, default=True
+            If set to True, obfuscated ui_metrics function will be executed using js2py,
+            and the result will be sent to the API. Enabling this may reduce the risk of account suspension.
 
         Examples
         --------
@@ -452,10 +462,18 @@ class Client:
         ...     password='00000000'
         ... )
         """
+        self.http.cookies.clear()
+
+        if cookies_file and os.path.exists(cookies_file):
+            self.load_cookies(cookies_file)
+            print(f"Cookies loaded from {cookies_file}")
+            return
+
+        print("Attempting to login...")
         if self.is_oauth():
             res = await self._login_oauth(auth_info_1=auth_info_1, auth_info_2=auth_info_2, password=password, totp_secret=totp_secret)
         else:
-            res = await self._login_basic(auth_info_1=auth_info_1, auth_info_2=auth_info_2, password=password, totp_secret=totp_secret)
+            res = await self._login_basic(auth_info_1=auth_info_1, auth_info_2=auth_info_2, password=password, totp_secret=totp_secret, enable_ui_metrics=enable_ui_metrics)
 
     async def _login_basic(
         self,
@@ -470,7 +488,6 @@ class Client:
 
         flow = Flow(self, guest_token)
 
-        await flow.sso_init('apple')
         await flow.execute_task(params={'flow_name': 'login'}, data={
             'input_flow_data': {
                 'flow_context': {
@@ -524,15 +541,22 @@ class Client:
                 'web_modal': 1
             }
         })
-        solution = await self._ui_metrix()
+        await flow.sso_init('apple')
+
+        if enable_ui_metrics:
+            ui_metrics_response = solve_ui_metrics(
+                await self._ui_metrics()
+            )
+        else:
+            ui_metrics_response = ''
+
         await flow.execute_task({
-            "subtask_id": "LoginJsInstrumentationSubtask",
-            "js_instrumentation": {
-                "response": solution,
-                "link": "next_link"
+            'subtask_id': 'LoginJsInstrumentationSubtask',
+            'js_instrumentation': {
+                'response': ui_metrics_response,
+                'link': 'next_link'
             }
         })
-        await flow.sso_init('apple')
         await flow.execute_task({
             'subtask_id': 'LoginEnterUserIdentifierSSO',
             'settings_list': {
@@ -635,6 +659,9 @@ class Client:
                     'link': 'next_link'
                 }
             })
+
+        if cookies_file:
+            self.save_cookies(cookies_file)
 
         return flow.response
 
@@ -1077,7 +1104,11 @@ class Client:
             if not item['entryId'].startswith(('tweet', 'search-grid')):
                 continue
 
-            tweet = tweet_from_data(self, item)
+            try:
+                tweet = tweet_from_data(self, item)
+            except KeyError:
+                tweet = None
+                
             if tweet is not None:
                 results.append(tweet)
 
@@ -1608,15 +1639,15 @@ class Client:
             reply_to, attachment_url, community_id, share_with_followers,
             richtext_options, edit_tweet_id, limit_mode
         )
-        if is_note_tweet:
-            _result = response.get('data', {}).get('notetweet_create', {}).get('tweet_results')
-        else:
-            _result = response.get('data', {}).get('create_tweet', {}).get('tweet_results')
-        if not _result:
+        if 'errors' in response:
             raise_exceptions_from_response(response['errors'])
             raise CouldNotTweet(
                 response['errors'][0] if response['errors'] else 'Failed to post a tweet.'
             )
+        if is_note_tweet:
+            _result = response.get('data', {}).get('notetweet_create', {}).get('tweet_results')
+        else:
+            _result = response.get('data', {}).get('create_tweet', {}).get('tweet_results')
         return tweet_from_data(self, _result)
 
     async def create_scheduled_tweet(

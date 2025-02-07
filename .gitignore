@@ -1,1 +1,3 @@
-﻿twikit.egg-info
+*.json
+/*.py
+/node_modules

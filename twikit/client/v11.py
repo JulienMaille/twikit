@@ -94,6 +94,10 @@ class V11Client:
         if 'X-Twitter-Auth-Type' in headers:
             headers.pop('X-Twitter-Auth-Type')
 
+        if self.base._get_csrf_token():
+            headers["x-csrf-token"] = self.base._get_csrf_token()
+            headers["x-twitter-auth-type"] = "OAuth2Session"
+
         return await self.base.post(
             Endpoint.ONBOARDING_TASK,
             json=data,
