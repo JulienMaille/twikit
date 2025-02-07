@@ -93,7 +93,7 @@ class GuestClient:
                             'Chrome/122.0.0.0 Safari/537.36')
         self._guest_token: str | None = None  # set when activate method is called
         self.gql = GQLClient(self)
-        self.v11 = V11Client(self)
+        self.v11 = V11Client(self, self._token)
         self.client_transaction = ClientTransaction()
 
     async def request(

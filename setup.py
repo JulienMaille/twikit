@@ -20,6 +20,7 @@ setup(
         'lxml',
         #'webvtt-py',
         #'m3u8',
+        'Brotli',
         'Js2Py-3.13'
     ],
     python_requires='>=3.8',

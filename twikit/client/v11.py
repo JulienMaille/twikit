@@ -59,8 +59,9 @@ class Endpoint:
 
 
 class V11Client:
-    def __init__(self, base: ClientType) -> None:
+    def __init__(self, base: ClientType, token) -> None:
         self.base = base
+        self._token = token
 
     async def guest_activate(self):
         headers = self.base._base_headers
@@ -88,15 +89,14 @@ class V11Client:
         if subtask_inputs is not None:
             data['subtask_inputs'] = subtask_inputs
 
-        headers = self.base._base_headers | {
-            'x-guest-token': guest_token
+        headers = {
+            'x-guest-token': guest_token,
+            'Authorization': 'Bearer ' + self._token
         }
-        if 'X-Twitter-Auth-Type' in headers:
-            headers.pop('X-Twitter-Auth-Type')
 
         if self.base._get_csrf_token():
             headers["x-csrf-token"] = self.base._get_csrf_token()
-            headers["x-twitter-auth-type"] = "OAuth2Session"
+            headers["X-Twitter-Auth-Type"] = "OAuth2Session"
 
         return await self.base.post(
             Endpoint.ONBOARDING_TASK,

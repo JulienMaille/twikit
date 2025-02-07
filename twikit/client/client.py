@@ -12,6 +12,7 @@ import random
 import uuid
 import base64
 import os
+import brotli
 
 import filetype
 import pyotp
@@ -130,7 +131,7 @@ class Client:
         self._act_as = None
 
         self.gql = GQLClient(self)
-        self.v11 = V11Client(self)
+        self.v11 = V11Client(self, self._token)
         self.rate_limits = {}
 
     def is_oauth(self) -> bool:
@@ -235,8 +236,16 @@ class Client:
             response = await self.http.request(method, url, headers=headers, **kwargs)
             self._remove_duplicate_ct0_cookie()
         try:
-            response_data = response.json()
-        except json.decoder.JSONDecodeError:
+            if 'br' in response.headers.get('Content-Encoding', ''):
+                # Decompress the response
+                try:
+                    decompressed_data = brotli.decompress(response.content)
+                    response_data = json.loads(decompressed_data.decode('utf-8'))
+                except brotli.error as e:
+                    response_data = response.json()
+            else:
+                response_data = response.json()
+        except:
             response_data = response.text
 
         if isinstance(response_data, dict) and 'errors' in response_data:
@@ -475,6 +484,9 @@ class Client:
         else:
             res = await self._login_basic(auth_info_1=auth_info_1, auth_info_2=auth_info_2, password=password, totp_secret=totp_secret, enable_ui_metrics=enable_ui_metrics)
 
+        if cookies_file:
+            self.save_cookies(cookies_file)
+
     async def _login_basic(
         self,
         *,
@@ -660,9 +672,6 @@ class Client:
                     'link': 'next_link'
                 }
             })
-
-        if cookies_file:
-            self.save_cookies(cookies_file)
 
         return flow.response
 
