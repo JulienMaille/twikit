@@ -40,11 +40,6 @@ class CaptchaSolver:
         )
         return response, parse_unlock_html(response.text)
 
-    async def ui_metrix(self) -> str:
-        js, _ = await self.client.get(
-            f'https://twitter.com/i/js_inst?c_name=ui_metrics'
-        )
-        return re.findall(r'return ({.*?});', js, re.DOTALL)[0]
 
     async def confirm_unlock(
         self,
@@ -68,7 +63,7 @@ class CaptchaSolver:
         if email_token:
             data['token'] = email_token
         if ui_metrics:
-            data['ui_metrics'] = await self.client._ui_metrix()
+            data['ui_metrics'] = await self.client._ui_metrics()
         headers = {
             'User-Agent': self.client._user_agent,
             'Content-Type': 'application/x-www-form-urlencoded',
